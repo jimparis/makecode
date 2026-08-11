@@ -1,0 +1,25 @@
+[Unit]
+Description=Circuit Playground MakeCode static editor
+After=network-online.target
+Wants=network-online.target
+
+[Container]
+Image=@IMAGE@
+ContainerName=circuit-playground-makecode
+PublishPort=127.0.0.1:3232:3232
+ReadOnly=true
+Tmpfs=/tmp:size=16m
+NoNewPrivileges=true
+DropCapability=all
+UserNS=keep-id
+User=%U:%G
+Volume=%h/.local/share/circuit-playground-makecode/shares:/var/lib/makecode-shares:Z
+
+[Service]
+ExecStartPre=/usr/bin/mkdir -p %h/.local/share/circuit-playground-makecode/shares
+Restart=on-failure
+RestartSec=5s
+TimeoutStopSec=30s
+
+[Install]
+WantedBy=default.target

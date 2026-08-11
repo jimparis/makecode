@@ -1,0 +1,24 @@
+FROM docker.io/library/golang@sha256:aee43c3ccbf24fdffb7295693b6e33b21e01baec1b2a55acc351fde345e9ec34 AS server-build
+
+WORKDIR /src
+COPY server/go.mod server/main.go ./
+RUN CGO_ENABLED=0 GOOS=linux go build -trimpath -ldflags="-s -w -buildid=" -o /out/makecode-server .
+
+FROM scratch
+
+ARG SOURCE_REVISION=unknown
+ARG RELEASE_VERSION=unknown
+LABEL org.opencontainers.image.title="Circuit Playground MakeCode" \
+      org.opencontainers.image.revision="${SOURCE_REVISION}" \
+      org.opencontainers.image.version="${RELEASE_VERSION}"
+
+COPY --from=server-build /out/makecode-server /makecode-server
+COPY site/ /site/
+
+ENV SITE_DIR=/site \
+    SHARE_DATA_DIR=/var/lib/makecode-shares \
+    LISTEN_ADDR=:3232
+
+USER 65532:65532
+EXPOSE 3232
+ENTRYPOINT ["/makecode-server"]
