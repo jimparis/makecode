@@ -625,8 +625,20 @@ async function checkExtensionsBrowser(page) {
         row.setAttribute("data-browser-extension-entry", "true");
     });
     await page.click('[data-browser-extension-entry="true"]');
-    await page.waitForFunction(() => [...document.querySelectorAll('[role="dialog"]')]
-        .some(dialog => /\bExtensions\b/.test(dialog.textContent || "")), { timeout: 30000 });
+    try {
+        await page.waitForFunction(() => [...document.querySelectorAll('[role="dialog"]')]
+            .some(dialog => dialog.querySelector(".common-modal-title")?.textContent?.trim() === "Extensions"),
+        { timeout: 5000 });
+    } catch (error) {
+        const state = await page.evaluate(() => ({
+            row: document.querySelector('[data-browser-extension-entry="true"]')?.outerHTML,
+            dialogs: [...document.querySelectorAll('[role="dialog"]')]
+                .map(dialog => dialog.textContent?.slice(0, 500)),
+            active: document.activeElement?.outerHTML,
+            body: document.body.innerText.slice(0, 2000)
+        }));
+        fail(`Extensions entry did not open its dialog: ${JSON.stringify(state)}`);
+    }
 
     const recommended = await page.evaluate(() => ({
         titles: [...document.querySelectorAll(".common-extension-card-title")]
