@@ -3,14 +3,16 @@
 This project builds and hosts one modern, self-contained MakeCode editor for
 both Adafruit Circuit Playground boards:
 
-- Circuit Playground Express (CPX, SAMD21)
-- Circuit Playground Bluefruit (CPB, nRF52840)
+- [Circuit Playground Express](https://www.adafruit.com/product/3333) (CPX,
+  SAMD21)
+- [Circuit Playground Bluefruit](https://www.adafruit.com/product/4333) (CPB,
+  nRF52840)
 
 **Try the live editor: [makecode.jim.sh](https://makecode.jim.sh/)**
 
-| Circuit Playground Bluefruit | Circuit Playground Express |
+| Circuit Playground Express | Circuit Playground Bluefruit |
 | --- | --- |
-| ![A MakeCode Blocks project running in the Circuit Playground Bluefruit simulator](docs/images/editor-bluefruit.png) | ![The same MakeCode Blocks project running in the Circuit Playground Express simulator](docs/images/editor-express.png) |
+| ![A MakeCode Blocks project running in the Circuit Playground Express simulator](docs/images/editor-express.png) | ![The same MakeCode Blocks project running in the Circuit Playground Bluefruit simulator](docs/images/editor-bluefruit.png) |
 
 ## Why this exists
 

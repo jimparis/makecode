@@ -151,18 +151,46 @@ async function waitForSimulatorFrame(page, timeout = 30000) {
 async function waitForSimulatorBoard(page, expectedBoardId, timeout = 30000) {
     const deadline = Date.now() + timeout;
     let lastState;
+    let stableSince = 0;
     while (Date.now() < deadline) {
-        const frame = page.frames().find(candidate => /simulator\.html/.test(candidate.url()));
-        if (frame) {
+        const frames = page.frames().filter(candidate => /simulator\.html/.test(candidate.url()));
+        for (const frame of frames) {
             try {
-                lastState = await frame.evaluate(() => ({
-                    boardId: window.pxsim?.runtime?.board?.boardDefinition?.id,
-                    hasRuntime: !!window.pxsim?.runtime,
-                    hasBoard: !!window.pxsim?.runtime?.board
-                }));
-                if (lastState.boardId === expectedBoardId) return frame;
+                const frameElement = await frame.frameElement();
+                const visible = await frameElement.evaluate(element => {
+                    const bounds = element.getBoundingClientRect();
+                    const topmost = document.elementFromPoint(
+                        bounds.left + bounds.width / 2,
+                        bounds.top + bounds.height / 2
+                    );
+                    return bounds.width > 0 && bounds.height > 0 &&
+                        getComputedStyle(element).visibility !== "hidden" &&
+                        topmost === element;
+                });
+                if (!visible) continue;
+                lastState = await frame.evaluate(() => {
+                    const board = window.pxsim?.runtime?.board?.boardDefinition;
+                    const image = board?.visual?.image || "";
+                    const domImage = document.querySelector("image")?.href?.baseVal || "";
+                    return {
+                        boardId: board?.id,
+                        hasRuntime: !!window.pxsim?.runtime,
+                        hasBoard: !!window.pxsim?.runtime?.board,
+                        blueBoardImage: /(?:%23|#)001bae/i.test(image) &&
+                            /(?:%23|#)001bae/i.test(domImage)
+                    };
+                });
+                const imageMatches = expectedBoardId === "adafruit-circuit-playground-bluefruit"
+                    ? lastState.blueBoardImage : !lastState.blueBoardImage;
+                if (lastState.boardId === expectedBoardId && imageMatches) {
+                    if (!stableSince) stableSince = Date.now();
+                    if (Date.now() - stableSince >= 1000) return frame;
+                } else {
+                    stableSince = 0;
+                }
             } catch (error) {
                 lastState = { detached: error.message };
+                stableSince = 0;
             }
         }
         await delay(100);
@@ -174,7 +202,7 @@ async function waitForSimulatorBoard(page, expectedBoardId, timeout = 30000) {
     })}`);
 }
 
-async function captureReadmeScreenshot(page, filename, source) {
+async function captureReadmeScreenshot(page, filename, source, boardId) {
     if (process.env.CAPTURE_README_SCREENSHOTS !== "1") return;
     const directory = path.join(workspace, "docs", "images");
     fs.mkdirSync(directory, { recursive: true });
@@ -188,7 +216,7 @@ async function captureReadmeScreenshot(page, filename, source) {
     await clickVisible(page, ".blocks-menuitem");
     await page.waitForFunction(() => /set\s+all\s+pixels\s+to/.test(document.body.innerText),
         { timeout: 30000 });
-    await delay(1000);
+    await waitForSimulatorBoard(page, boardId);
     await page.screenshot({ path: path.join(directory, filename), type: "png" });
     await clickVisible(page, ".javascript-menuitem");
     await page.waitForFunction(() => window.monaco && monaco.editor.getModels()
@@ -906,7 +934,8 @@ async function main() {
         }, marker);
         await delay(2000);
         await captureReadmeScreenshot(page, "editor-bluefruit.png",
-            `${marker}\nlight.setAll(0xff0000)\n`);
+            `${marker}\nlight.setAll(0xff0000)\n`,
+            "adafruit-circuit-playground-bluefruit");
 
         const publishedShare = await publishAndReopenProject(
             page, browser, browserName, origin, marker, "nrf52840"
@@ -941,7 +970,8 @@ async function main() {
         assert(/\bNETWORK\b/.test(cpxState.text), "CPX toolbox is missing its Network category");
         assert(cpxState.source.includes(marker), "board switch did not preserve JavaScript source");
         await captureReadmeScreenshot(page, "editor-express.png",
-            `${marker}\nlight.setAll(0xff0000)\n`);
+            `${marker}\nlight.setAll(0xff0000)\n`,
+            "adafruit-circuit-playground-express");
 
         await page.reload({ waitUntil: "networkidle2", timeout: 60000 });
         await page.waitForFunction(() => window.pxt && pxt.appTargetVariant === "samd21" &&
