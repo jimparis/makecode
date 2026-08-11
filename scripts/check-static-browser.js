@@ -202,6 +202,116 @@ async function waitForSimulatorBoard(page, expectedBoardId, timeout = 30000) {
     })}`);
 }
 
+async function seedLegacyBoardStateAndPoisonedFirmware(page, projectName) {
+    return page.evaluate(async ({ projectName, staleHash }) => {
+        const databaseName = "__pxt_idb_workspace_circuitplayground___default";
+        const request = indexedDB.open(databaseName);
+        const database = await new Promise((resolve, reject) => {
+            request.onsuccess = () => resolve(request.result);
+            request.onerror = () => reject(request.error);
+        });
+        const transaction = database.transaction(["texts", "hostcache"], "readwrite");
+        const texts = transaction.objectStore("texts");
+        const hostcache = transaction.objectStore("hostcache");
+        const projects = await new Promise((resolve, reject) => {
+            const get = texts.getAll();
+            get.onsuccess = () => resolve(get.result);
+            get.onerror = () => reject(get.error);
+        });
+        const project = projects.find(candidate => {
+            try {
+                return JSON.parse(candidate.files["pxt.json"]).name === projectName;
+            } catch (error) {
+                return false;
+            }
+        });
+        if (!project) throw new Error(`Could not find project ${projectName} in IndexedDB`);
+
+        const config = JSON.parse(project.files["pxt.json"]);
+        config.dependencies = {
+            "circuit-playground": "*",
+            "infrared": "*",
+            "accelerometer": "*",
+            "adafruit-circuit-playground-bluefruit": "*"
+        };
+        project.files["pxt.json"] = `${JSON.stringify(config, null, 4)}\n`;
+        texts.put(project);
+
+        const keyRecord = await new Promise((resolve, reject) => {
+            const get = hostcache.get("hex-keys");
+            get.onsuccess = () => resolve(get.result);
+            get.onerror = () => reject(get.error);
+        });
+        const keys = JSON.parse(keyRecord?.val || "[]");
+        const currentFirmwareKey = keys.find(key => /^hex-[0-9a-f]{64}$/.test(key));
+        if (!currentFirmwareKey) throw new Error("Current CPB firmware cache key is unavailable");
+        const poisoned = JSON.stringify({
+            enums: [], functions: [],
+            hex: ["<!DOCTYPE html>", "<html><body>editor shell</body></html>"]
+        });
+        hostcache.put({ id: currentFirmwareKey, val: poisoned });
+        hostcache.put({ id: `hex-${staleHash}`, val: poisoned });
+        hostcache.put({
+            id: "hex-keys",
+            val: JSON.stringify([`hex-${staleHash}`, currentFirmwareKey,
+                ...keys.filter(key => key !== currentFirmwareKey && key !== `hex-${staleHash}`)])
+        });
+
+        await new Promise((resolve, reject) => {
+            transaction.oncomplete = resolve;
+            transaction.onerror = () => reject(transaction.error);
+            transaction.onabort = () => reject(transaction.error);
+        });
+        database.close();
+        return currentFirmwareKey;
+    }, {
+        projectName,
+        staleHash: "7189a7a6e36e83b8f9c1d8a6bd09e8b0ff6cf19623de607753b3357dd232845e"
+    });
+}
+
+async function inspectPersistedProjectAndFirmware(page, projectName, firmwareKey) {
+    return page.evaluate(async ({ projectName, firmwareKey, staleHash }) => {
+        const request = indexedDB.open("__pxt_idb_workspace_circuitplayground___default");
+        const database = await new Promise((resolve, reject) => {
+            request.onsuccess = () => resolve(request.result);
+            request.onerror = () => reject(request.error);
+        });
+        const transaction = database.transaction(["texts", "hostcache"], "readonly");
+        const projects = await new Promise((resolve, reject) => {
+            const get = transaction.objectStore("texts").getAll();
+            get.onsuccess = () => resolve(get.result);
+            get.onerror = () => reject(get.error);
+        });
+        const project = projects.find(candidate => {
+            try {
+                return JSON.parse(candidate.files["pxt.json"]).name === projectName;
+            } catch (error) {
+                return false;
+            }
+        });
+        const firmware = await new Promise((resolve, reject) => {
+            const get = transaction.objectStore("hostcache").get(firmwareKey);
+            get.onsuccess = () => resolve(get.result);
+            get.onerror = () => reject(get.error);
+        });
+        database.close();
+        const config = project && JSON.parse(project.files["pxt.json"]);
+        const cached = firmware && JSON.parse(firmware.val);
+        return {
+            dependencies: config && Object.keys(config.dependencies),
+            source: project && project.files["main.ts"],
+            firmwareIsHtml: !!cached?.hex?.some(line => /<!doctype|<html/i.test(line)),
+            firmwareHasHex: !!cached?.hex?.length,
+            requestedStaleFirmware: performance.getEntriesByType("resource")
+                .some(entry => entry.name.includes(`/hexcache/${staleHash}.hex`))
+        };
+    }, {
+        projectName, firmwareKey,
+        staleHash: "7189a7a6e36e83b8f9c1d8a6bd09e8b0ff6cf19623de607753b3357dd232845e"
+    });
+}
+
 async function captureReadmeScreenshot(page, filename, source, boardId) {
     if (process.env.CAPTURE_README_SCREENSHOTS !== "1") return;
     const directory = path.join(workspace, "docs", "images");
@@ -963,6 +1073,58 @@ async function main() {
             model.setValue(`${value}\nlight.setAll(0xff0000)\n`);
         }, marker);
         await delay(2000);
+
+        const poisonedFirmwareKey = await seedLegacyBoardStateAndPoisonedFirmware(page, projectName);
+        await page.reload({ waitUntil: "networkidle2", timeout: 60000 });
+        await page.waitForFunction(value => window.pxt && pxt.appTargetVariant === "nrf52840" &&
+            window.monaco && monaco.editor.getModels().some(model =>
+                /main\.ts$/.test(model.uri.path) && model.getValue().includes(value)),
+        { timeout: 30000 }, marker);
+        await waitForSimulatorBoard(page, "adafruit-circuit-playground-bluefruit");
+        await page.waitForFunction(async ({ projectName, firmwareKey }) => {
+            const request = indexedDB.open("__pxt_idb_workspace_circuitplayground___default");
+            const database = await new Promise((resolve, reject) => {
+                request.onsuccess = () => resolve(request.result);
+                request.onerror = () => reject(request.error);
+            });
+            const transaction = database.transaction(["texts", "hostcache"], "readonly");
+            const projects = await new Promise((resolve, reject) => {
+                const get = transaction.objectStore("texts").getAll();
+                get.onsuccess = () => resolve(get.result);
+                get.onerror = () => reject(get.error);
+            });
+            const project = projects.find(candidate => {
+                try {
+                    return JSON.parse(candidate.files["pxt.json"]).name === projectName;
+                } catch (error) {
+                    return false;
+                }
+            });
+            const firmware = await new Promise((resolve, reject) => {
+                const get = transaction.objectStore("hostcache").get(firmwareKey);
+                get.onsuccess = () => resolve(get.result);
+                get.onerror = () => reject(get.error);
+            });
+            database.close();
+            const dependencies = project && Object.keys(
+                JSON.parse(project.files["pxt.json"]).dependencies);
+            const cached = firmware && JSON.parse(firmware.val);
+            return dependencies?.length === 1 &&
+                dependencies[0] === "adafruit-circuit-playground-bluefruit" &&
+                cached?.hex?.length && !cached.hex.some(line => /<!doctype|<html/i.test(line));
+        }, { timeout: 30000 }, { projectName, firmwareKey: poisonedFirmwareKey });
+        const repairedState = await inspectPersistedProjectAndFirmware(
+            page, projectName, poisonedFirmwareKey);
+        assert(repairedState.dependencies.join(",") ===
+            "adafruit-circuit-playground-bluefruit",
+        `legacy board dependencies were not repaired: ${JSON.stringify(repairedState)}`);
+        assert(repairedState.source.includes(marker),
+            "legacy board dependency repair changed project source");
+        assert(repairedState.firmwareHasHex && !repairedState.firmwareIsHtml,
+            `poisoned native cache was not replaced: ${JSON.stringify(repairedState)}`);
+        assert(!repairedState.requestedStaleFirmware,
+            `repaired project still requested stale native firmware: ${JSON.stringify(repairedState)}`);
+
         await captureReadmeScreenshot(page, "editor-bluefruit.png",
             `${marker}\nlight.setAll(0xff0000)\n`,
             "adafruit-circuit-playground-bluefruit");
@@ -1374,7 +1536,7 @@ async function main() {
             !isBlockedExternalMessage(message));
         assert(unexpectedConsoleErrors.length === 0,
             `unexpected browser console errors:\n  ${unexpectedConsoleErrors.join("\n  ")}`);
-        console.log(`Static browser acceptance: PWA/offline home, responsive layout, reload persistence, JS/Blocks CPB-CPX switching with visible unsupported-API diagnostics, theme selection/startup reset, 80-200% color picker, a user melody across 10 simulator restarts and 3 project reopens, and 50 tone plus 20 instruction-audio cancellations with sequencer teardown${browserName === "firefox" ? ", project export/import, and CPB/CPX UF2 downloads" : ""} passed`);
+        console.log(`Static browser acceptance: PWA/offline home, poisoned native-cache and legacy board-state repair, responsive layout, reload persistence, JS/Blocks CPB-CPX switching with visible unsupported-API diagnostics, theme selection/startup reset, 80-200% color picker, a user melody across 10 simulator restarts and 3 project reopens, and 50 tone plus 20 instruction-audio cancellations with sequencer teardown${browserName === "firefox" ? ", project export/import, and CPB/CPX UF2 downloads" : ""} passed`);
         console.log(`Browser: ${await browser.version()}`);
         console.log(`Origin: ${origin}`);
         console.log(`External requests: ${externalRequests.size}; console errors: ${consoleErrors.length}`);

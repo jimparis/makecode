@@ -151,6 +151,15 @@ func TestStaticRoutesAndHeaders(t *testing.T) {
 	if missing.Code != http.StatusNotFound {
 		t.Fatalf("missing static status %d", missing.Code)
 	}
+	missingFirmware := request(t, application, http.MethodGet,
+		"/hexcache/7189a7a6e36e83b8f9c1d8a6bd09e8b0ff6cf19623de607753b3357dd232845e.hex", nil)
+	if missingFirmware.Code != http.StatusNotFound || strings.Contains(missingFirmware.Body.String(), "editor shell") {
+		t.Fatalf("missing firmware status %d body %q", missingFirmware.Code, missingFirmware.Body.String())
+	}
+	missingScript := request(t, application, http.MethodGet, "/missing-worker.js", nil)
+	if missingScript.Code != http.StatusNotFound || strings.Contains(missingScript.Body.String(), "editor shell") {
+		t.Fatalf("missing script status %d body %q", missingScript.Code, missingScript.Body.String())
+	}
 	missingShare := request(t, application, http.MethodGet, "/_23456789abcd", nil)
 	if missingShare.Code != http.StatusNotFound {
 		t.Fatalf("missing share status %d", missingShare.Code)

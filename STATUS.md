@@ -614,18 +614,32 @@ to their public GitHub forks.
     simulators. CPX is shown first; its black PCB and the newer CPB's blue PCB
     are captured from stable board-specific simulator frames rather than a
     transient fallback frame. Personal session/path instructions were removed.
-17. The normal-profile-only TS9200 failures were traced to the PWA update
-    path, not Firefox fingerprinting or autoplay protection. Static packaging
-    left `@pxtRelId@`, `@targetUrl@`, and related placeholders unresolved in
-    the service workers, while static mode did not register an updated worker.
-    A previously installed worker could therefore keep obsolete root bundle
-    names indefinitely and mix compiler, target, and package generations; a
-    private window had no old worker and worked. Static workers now receive a
-    source-derived release ID, bypass the HTTP cache when checking for updates,
-    activate for static deployments, delete older MakeCode caches, and cache
-    exactly the two shipped CPX/CPB firmware images. Both local and public
-    Chrome 151/Firefox 140 ESR gates require the current worker to control the
-    page, reject stale MakeCode caches, and pass with zero console errors.
+17. The first normal-profile investigation found and fixed a real PWA update
+    flaw, but it was not the cause of the continuing TS9200 errors after the
+    updated bundles loaded. Static packaging had left `@pxtRelId@`,
+    `@targetUrl@`, and related placeholders unresolved in service workers,
+    while static mode did not register an updated worker. Static workers now
+    receive a source-derived release ID, bypass the HTTP cache when checking
+    for updates, activate for static deployments, delete older MakeCode
+    caches, and cache exactly the two shipped CPX/CPB firmware images. Both
+    local and public Chrome 151/Firefox 140 ESR gates require the current worker
+    to control the page and reject stale MakeCode caches.
+18. Read-only inspection of the affected live Firefox profile on `basis`
+    identified the continuing failure precisely. Project source and its JSON
+    were intact, but an older board switch had left CPX-owned `infrared` and
+    redundant shared packages at the root of a CPB project. That requested
+    unshipped native hash `7189a7...845e`; the static server returned the editor
+    HTML shell with status 200 for the missing `.hex`, and PXT persisted it as
+    firmware with no native function table. PXT now normalizes stale
+    board-owned root dependencies while preserving source, persists the
+    repaired config, and rejects/overwrites HTML-shaped native cache records.
+    CPX-only packages explicitly disable the nRF52840 variant (and variant
+    runtime packages mark their opposite board), while missing firmware and
+    script paths return 404 instead of the SPA shell. The PXT production build,
+    all 136 snippet round trips, board-switch compiler contract, static package
+    gate, server unit tests, and syntax checks pass. Browser regression now
+    seeds the exact legacy dependency shape and poisoned firmware cache; run it
+    against the next packaged release before deployment.
 
 ## Ordered unfinished work
 

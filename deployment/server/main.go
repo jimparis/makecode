@@ -448,7 +448,8 @@ func (a *app) serveStatic(response http.ResponseWriter, request *http.Request) {
 			return
 		}
 	}
-	if strings.HasPrefix(requested, "/static/") {
+	if strings.HasPrefix(requested, "/static/") ||
+		strings.HasPrefix(requested, "/hexcache/") || filepath.Ext(requested) != "" {
 		http.NotFound(response, request)
 		return
 	}
