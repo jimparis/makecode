@@ -81,9 +81,10 @@ The workspace root is a fourth, orchestration-only Git repository:
 
 | Path | Role | Baseline | Current remote state |
 | --- | --- | --- | --- |
-| `pxt-circuit-playground/` | PXT target/editor | `microsoft/pxt-maker` commit `de46b65eaa71ce6f2eb0f29f5db7fb69d33cc63d` | `upstream` only |
-| `codal-circuit-playground-bluefruit/` | CPB native runtime | `mmoskal/codal-nrf52840-dk` commit `00d69e508749b33aadd91f43e68abd542467fb8f` | `upstream` only |
-| `Adafruit_nRF52_Bootloader/` | CPB bootloader | `adafruit/Adafruit_nRF52_Bootloader` commit `c67f0bcf0fa8e841426335b1bbde91cda6ca1f50` | `upstream` only |
+| `.` | Orchestration/deployment | initial commit `006bc707d89c` | `origin` = `jimparis/makecode` |
+| `pxt-circuit-playground/` | PXT target/editor | `microsoft/pxt-maker` commit `de46b65eaa71ce6f2eb0f29f5db7fb69d33cc63d` | `origin` + preserved `upstream` |
+| `codal-circuit-playground-bluefruit/` | CPB native runtime | `mmoskal/codal-nrf52840-dk` commit `00d69e508749b33aadd91f43e68abd542467fb8f` | `origin` + preserved `upstream` |
+| `Adafruit_nRF52_Bootloader/` | CPB bootloader | `adafruit/Adafruit_nRF52_Bootloader` commit `c67f0bcf0fa8e841426335b1bbde91cda6ca1f50` | `origin` + preserved `upstream` |
 
 Useful upstream reference points:
 
@@ -97,7 +98,7 @@ Useful upstream reference points:
   `codal-core` counterpart
   `1076c9a4388809a4e2c262d62b0064108066ab19`.
 
-Expected GitHub destinations, not yet created or pushed, are:
+Public GitHub destinations created and first pushed on 2026-08-11 are:
 
 - `jimparis/makecode` for the orchestration root
 - `jimparis/pxt-circuit-playground`
@@ -572,20 +573,24 @@ These changes are uncommitted in their independent child repositories.
     regression plus the real melody restart/project-reopen stress. No
     `pxt-common-packages` file is patched; the separate version-guarded
     `pxt-core` browser patch is reproducibly applied after installation.
-15. Release `v0.15.77-alpha.dcc898f79af8` is deployed on `psychosis` as the
+15. Release `v0.15.77-alpha.10821a483e4d` is deployed on `psychosis` as the
     rootless `makecode` service. The remote OCI checksum, image ID, version
-    label, read-only root, dropped capabilities, nginx user, `/tmp` tmpfs, and
-    loopback-only `127.0.0.1:3232` binding were verified. The Quadlet generator
+    label, read-only root, dropped capabilities, service user, `/tmp` tmpfs,
+    loopback-only `127.0.0.1:3232` binding, and sole writable persistent share
+    mount were verified. The Quadlet generator
     links the service into the user `default.target`; account linger is enabled,
     the service survives restart, and its journal has no warnings. The broken
     legacy `arcade.container` was recoverably moved to
     `/home/makecode/retired/arcade.container.pre-circuit-playground-20260811`
     so it cannot race for the same port after reboot. Public HTTPS serves files
     byte-identical to the release and passes the full Chrome 151 and Firefox
-    140 ESR gates with zero external requests. Public `/static` artwork has the
-    correct image MIME type, `/boards` serves rendered documentation, missing
-    static files return 404, and the editor shell contains no Application
-    Insights bootstrap or Visual Studio/Azure telemetry endpoint.
+    140 ESR gates with zero external requests. Both browsers publish and reopen
+    same-origin shares; production records are mode 0600, immutable reads and
+    clean-link redirects work, and the journal is clean. Public `/static`
+    artwork has the correct image MIME type, `/boards` serves rendered
+    documentation, missing static files return 404, and the editor shell
+    contains no Application Insights bootstrap or Visual Studio/Azure
+    telemetry endpoint.
 
 ## Ordered unfinished work
 
@@ -693,19 +698,18 @@ These changes are uncommitted in their independent child repositories.
 - The existing Apache HTTPS vhost now exposes the WebUSB permissions policy,
   alpha noindex header, and no-cache policy. Remove noindex and implement the
   final immutable-asset cache policy only for public v1.
-- Deploy the completed versioned, self-hosted publishing service behind
-  `https://makecode.jim.sh/api/` with persistent service-owned storage. The
-  local Go service implements and tests the PXT anonymous publish/read/
-  thumbnail contract, clean share links, limits, unguessable immutable IDs,
-  rate limiting, content checks, bounded storage, durable records, and
-  clean-recipient browser reopening. The currently deployed nginx release
-  still returns 405 for `POST /api/scripts`; release
-  `v0.15.77-alpha.10821a483e4d` must be installed and publicly retested. Back up
-  the persistent share directory with the documented release procedure.
+- The self-hosted publishing service is deployed behind
+  `https://makecode.jim.sh/api/` with persistent service-owned storage. Its PXT
+  anonymous publish/read/thumbnail contract, clean share links, limits,
+  unguessable immutable IDs, rate limiting, content checks, bounded storage,
+  durable records, and clean-recipient reopening pass publicly in Chrome and
+  Firefox. Add the share directory to the normal host backup schedule using
+  the documented release procedure.
 - Generate/install the narrow Linux udev rule and validate Chrome access.
-- Configure GitHub origins, push the authorized milestone commits, and add
-  Actions/GHCR workflows after authentication and repository creation are
-  confirmed. Preserve every child `upstream` remote.
+- GitHub origins are configured and the authorized milestone commits are
+  pushed publicly; every child retains `upstream`. Add narrowly scoped Actions
+  and GHCR workflows next, with digest-pinned builders and no repository
+  secrets required for pull-request validation.
 
 ### 6. Acceptance testing and public release
 
@@ -751,9 +755,9 @@ exact two-image static cache, versioned static-package gate, CPB CODAL runtime,
 local PXT application/HF2 build, and CPB HF2 bootloader build are green.
 Continue ordered tasks 3 and 4 with CPB hardware enumeration,
 application-to-bootloader handoff, flashing, sound, and capability tests.
-Task 5's previous nginx-only container is deployed at
-`https://makecode.jim.sh`; deploy the green same-origin publishing release
-`v0.15.77-alpha.10821a483e4d`, then rerun the public Chrome/Firefox gates. No
+Task 5's same-origin publishing release `v0.15.77-alpha.10821a483e4d` is
+deployed at `https://makecode.jim.sh`; public Chrome/Firefox gates pass with
+zero external requests. No
 CPB was attached during the latest session, so no firmware was installed.
 Browser automation now covers Blocks,
 visible CPB diagnostics for a retained CPX-only API, invalid-theme startup
@@ -761,11 +765,10 @@ reset, 80-200% color-picker placement, ten real-melody simulator restarts,
 three project reopens, 50-cycle direct audio teardown, 20 instruction-audio
 cancellations, sequencer disposal, Firefox persistence and project
 export/import, and validated CPB and CPX UF2 downloads.
-The current reproducible local handoff is
-`v0.15.77-alpha.10821a483e4d`; production still runs
-`v0.15.77-alpha.dcc898f79af8`. Retain manual download confirmation, physical
+The current reproducible local handoff and production release is
+`v0.15.77-alpha.10821a483e4d`. Retain manual download confirmation, physical
 Chromebook/Linux checks, WebUSB, and all hardware acceptance. Local milestone
 commits now exist in the PXT (`f0ca081d28c0`), CODAL (`30d62c331ea2`), and
-bootloader (`7836c7cc3d81`) repositories; configure origins and push them after
-GitHub authentication/repository creation. Only versioned static releases, not
+bootloader (`7836c7cc3d81`) repositories and are pushed to their public GitHub
+origins. Only versioned static releases, not
 a source checkout or firmware, are installed on `psychosis`.
