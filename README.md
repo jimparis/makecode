@@ -34,8 +34,8 @@ external packages are optional, user-initiated features.
 
 ## Repository layout
 
-This orchestration repository coordinates four independently versioned source
-repositories:
+This orchestration repository pins four independently versioned source
+repositories as Git submodules:
 
 | Directory | Purpose |
 | --- | --- |
@@ -44,20 +44,42 @@ repositories:
 | `codal-circuit-playground-bluefruit/` | Circuit Playground Bluefruit CODAL runtime |
 | `Adafruit_nRF52_Bootloader/` | Bluefruit UF2/DFU bootloader and HF2 WebUSB support |
 
-Each source repository retains an `upstream` remote so fixes can be compared
-with and contributed back to the original project. See [STATUS.md](STATUS.md)
-for the implementation state, reproducible baselines, test results, and
-remaining hardware acceptance work.
+Each top-level commit records the exact commit of every source repository.
+Each source repository also retains an `upstream` remote so fixes can be
+compared with and contributed back to the original project. See
+[STATUS.md](STATUS.md) for the implementation state, reproducible baselines,
+test results, and remaining hardware acceptance work.
 
 ## Building and testing
 
 The top-level Makefile runs the editor and native toolchains in pinned
-containers. A typical editor build is:
+containers. Initialize the four top-level submodules after cloning (the
+bootloader build initializes only the nested submodules it needs):
+
+```sh
+git clone https://github.com/jimparis/makecode.git
+cd makecode
+make submodules-init
+make status
+```
+
+A typical editor build is:
 
 ```sh
 make pxt-install
 make pxt-check
 make pxt-serve
+```
+
+Submodules are checked out at the parent repository's exact gitlinks. Before
+editing one, switch it to its development branch. Commit and push the child
+first, then stage and commit the new gitlink in this repository. For example:
+
+```sh
+git -C pxt switch circuit-playground-13.1.5
+# edit, test, commit, and push pxt
+git add pxt
+git commit -m "Update pinned PXT framework"
 ```
 
 The complete native and release gates are:

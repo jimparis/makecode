@@ -5,8 +5,9 @@ agreed plan, current implementation state, known build failures, and ordered
 unfinished work. Update it whenever a milestone, blocker, or important design
 decision changes.
 
-This directory orchestrates four independent repositories for the unified
-Circuit Playground MakeCode project:
+This directory orchestrates four independently versioned repositories, pinned
+at exact commits as Git submodules, for the unified Circuit Playground MakeCode
+project:
 
 - `pxt/` — source-built MakeCode/PXT framework fork.
 - `pxt-circuit-playground/` — editor, board packages, simulator, docs, CI, and
@@ -15,8 +16,12 @@ Circuit Playground MakeCode project:
 - `Adafruit_nRF52_Bootloader/` — CPB bootloader with the HF2 WebUSB interface.
 
 Work locally as `jim`. Run commands from `/home/jim/git/makecode` through the
-top-level Makefile where possible. Each child has independent Git history and
-must retain an `upstream` remote; do not turn the children into submodules.
+top-level Makefile where possible. Run `make submodules-init` after a fresh
+clone and `make submodules-check` before building. Each child has independent
+Git history and must retain an `upstream` remote. Commit and push child changes
+before committing the updated top-level gitlink; never pin the parent to an
+unpublished child commit. Do not use `git submodule update --remote` as an
+unreviewed upgrade mechanism.
 
 Production deployment belongs to the `makecode` service account on
 `psychosis`; use `ssh makecode@psychosis` for service-account operations.

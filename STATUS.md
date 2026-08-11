@@ -30,24 +30,26 @@ depend on Microsoft services.
   versioned application image. GitHub/package access is user-initiated only.
 - Production is a versioned, rootless, read-only static-package container.
   Never bind-mount a source checkout over `/site` or the application directory.
-- Keep the repositories independent peers with preserved `upstream` remotes;
-  they are intentionally not submodules under the current workspace contract.
+- Pin the four independently versioned source repositories as submodules.
+  Preserve each `upstream` remote and publish child commits before updating the
+  parent gitlink.
 - CPB application flash is `0x26000..<0xEA000`; the bootloader starts at
   `0xF4000`. Do not relax these bounds.
 
-## Repository layout and deployed repair inputs
+## Pinned source repositories
 
-| Repository | Role | Relevant commit |
+| Repository | Role | Pinned commit |
 | --- | --- | --- |
-| `.` | orchestration, acceptance, deployment | `8ca438b73061` |
 | `pxt/` | PXT framework fork | `9d444fc5779f` |
 | `pxt-circuit-playground/` | target/editor/simulator | `e12fa5e80cb8` |
 | `codal-circuit-playground-bluefruit/` | CPB native runtime | `30d62c331ea2` |
 | `Adafruit_nRF52_Bootloader/` | CPB HF2 bootloader | `7836c7cc3d81` |
 
-All have public `jimparis/*` origins; children retain `upstream`. Use
-`make status` for current heads and cleanliness. Milestone commits should be
-pushed after a relevant gate and secret scan.
+The parent gitlinks are the source of truth for this combination. All have
+public `jimparis/*` origins; initialized children retain `upstream`. Use
+`make submodules-init` after cloning and `make status` to verify exact pins and
+cleanliness. Milestone commits should be pushed after a relevant gate and
+secret scan.
 
 ## Current production
 
@@ -125,6 +127,8 @@ The site remains an alpha with `X-Robots-Tag: noindex, nofollow`.
 Run from the workspace root through the Makefile where possible:
 
 ```sh
+make submodules-init
+make submodules-check
 make status
 make pxt-check
 make static-build
@@ -143,10 +147,9 @@ reviewed service-account operation, not an unattended Make target.
 
 ```sh
 cd /home/jim/git/makecode
+make submodules-init
 make status
 git status --short
-git -C pxt status --short
-git -C pxt-circuit-playground status --short
 ```
 
 Resume CPB hardware/runtime acceptance. Never install firmware without a board
