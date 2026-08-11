@@ -1,0 +1,16 @@
+[submodule "pxt"]
+	path = pxt
+	url = https://github.com/jimparis/pxt.git
+	branch = circuit-playground-13.1.5
+[submodule "pxt-circuit-playground"]
+	path = pxt-circuit-playground
+	url = https://github.com/jimparis/pxt-circuit-playground.git
+	branch = main
+[submodule "codal-circuit-playground-bluefruit"]
+	path = codal-circuit-playground-bluefruit
+	url = https://github.com/jimparis/codal-circuit-playground-bluefruit.git
+	branch = main
+[submodule "Adafruit_nRF52_Bootloader"]
+	path = Adafruit_nRF52_Bootloader
+	url = https://github.com/jimparis/Adafruit_nRF52_Bootloader.git
+	branch = main
