@@ -548,19 +548,23 @@ to their public GitHub forks.
     minifier layouts. It also removes 381 generated Application Insights
     bootstrap blocks and the SDK, validates decoded home/board images and
     header contrast, proves `/boards` is documentation, and requires missing
-    `/static` assets to return 404. The current package contains 1,264 files
+    `/static` assets to return 404. The current package contains 1,272 files
     with site digest
-    `4e4a21cc1ae4dc62f73142fe45cc8f286fcf1a3d58839549186771c1a82abe76`
-    as release `v0.15.77-alpha.10821a483e4d` and image ID
-    `7cfb32800ad4200599444eefbca05b6b63cc0c1aaf2c2604db0871774f4cff13`.
-    The 21,872,640-byte version-named OCI archive has SHA-256
-    `d9d61b9f8cb5070382414beed2c0a16d43b9e7976ba23c922e332ed6f68d3805`.
+    `748f803027285759b9e0134d1eebed0abfe8405ccad4e284d9534ba721104a09`
+    as release `v0.15.77-alpha.ada3a59ebcfa` and image ID
+    `695f0f05ccb8c7e9ca3907c397c5c7ae1972077a0d43eccc781550c672ebfbe1`.
+    The 22,077,440-byte version-named OCI archive has SHA-256
+    `cf7ea0fc0ded0597b0d5130565053773ef32307968ed7e6725837746216670cc`.
+    Its metadata records clean target commit `622a1cfc16ea` and clean PXT
+    framework commit `fcb723a568c3`, plus both source-tree digests.
     Live ephemeral containers pass editor-shell, loopback, read-only,
     `Permissions-Policy`, alpha `X-Robots-Tag`, Chrome 151, and Firefox 140 ESR
     checks with exactly zero external requests. The checks cover PWA/offline
     behavior, responsive/visual home layout, board-picker names/badges/help,
     reload persistence, bidirectional JavaScript/Blocks board switching with a
-    visible unsupported-API diagnostic, theme reset/fallback including invalid
+    stable, topmost visible simulator whose board ID and board-specific image
+    both match the selected hardware, a visible unsupported-API diagnostic,
+    theme reset/fallback including invalid
     saved state at startup, every toolbox category's selected-state contrast,
     same-origin publish/read and clean-recipient share reopening, 80-200%
     color-picker placement, a real user melody
@@ -583,7 +587,7 @@ to their public GitHub forks.
     regression plus the real melody restart/project-reopen stress. No
     `pxt-common-packages` file is patched; all framework changes are maintained
     as source commits in the versioned PXT fork.
-15. Release `v0.15.77-alpha.10821a483e4d` is deployed on `psychosis` as the
+15. Release `v0.15.77-alpha.ada3a59ebcfa` is deployed on `psychosis` as the
     rootless `makecode` service. The remote OCI checksum, image ID, version
     label, read-only root, dropped capabilities, service user, `/tmp` tmpfs,
     loopback-only `127.0.0.1:3232` binding, and sole writable persistent share
@@ -601,6 +605,12 @@ to their public GitHub forks.
     documentation, missing static files return 404, and the editor shell
     contains no Application Insights bootstrap or Visual Studio/Azure
     telemetry endpoint.
+16. The public root README now leads with the live editor, links the official
+    Adafruit CPX and CPB product pages, explains the limitations of the old
+    Adafruit and Maker editors, and shows an example Blocks project on both
+    simulators. CPX is shown first; its black PCB and the newer CPB's blue PCB
+    are captured from stable board-specific simulator frames rather than a
+    transient fallback frame. Personal session/path instructions were removed.
 
 ## Ordered unfinished work
 
@@ -768,7 +778,7 @@ exact two-image static cache, versioned static-package gate, CPB CODAL runtime,
 local PXT application/HF2 build, and CPB HF2 bootloader build are green.
 Continue ordered tasks 3 and 4 with CPB hardware enumeration,
 application-to-bootloader handoff, flashing, sound, and capability tests.
-Task 5's same-origin publishing release `v0.15.77-alpha.10821a483e4d` is
+Task 5's same-origin publishing release `v0.15.77-alpha.ada3a59ebcfa` is
 deployed at `https://makecode.jim.sh`; public Chrome/Firefox gates pass with
 zero external requests. No
 CPB was attached during the latest session, so no firmware was installed.
@@ -779,7 +789,7 @@ three project reopens, 50-cycle direct audio teardown, 20 instruction-audio
 cancellations, sequencer disposal, Firefox persistence and project
 export/import, and validated CPB and CPX UF2 downloads.
 The current reproducible local handoff and production release is
-`v0.15.77-alpha.10821a483e4d`. Retain manual download confirmation, physical
+`v0.15.77-alpha.ada3a59ebcfa`. Retain manual download confirmation, physical
 Chromebook/Linux checks, WebUSB, and all hardware acceptance. Local milestone
 commits now exist in the PXT framework (`fcb723a568c3`), PXT target
 (`622a1cfc16ea`), CODAL (`30d62c331ea2`), and bootloader (`7836c7cc3d81`)
