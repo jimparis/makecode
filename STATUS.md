@@ -272,8 +272,8 @@ rather than publicly exposing port 3233 directly.
 
 ### Work in progress in `pxt-circuit-playground/`
 
-These changes are uncommitted. Preserve and review them; do not reset the
-working tree.
+These changes are committed in the target repository and pushed to its public
+GitHub fork. Preserve their independent history when updating from upstream.
 
 - Changed the target identity/title to Circuit Playground MakeCode.
 - Removed other board packages from `bundleddirs`; only CPX and CPB board
@@ -365,7 +365,8 @@ working tree.
 
 ### Native runtime and bootloader work in progress
 
-These changes are uncommitted in their independent child repositories.
+These changes are committed in their independent child repositories and pushed
+to their public GitHub forks.
 
 - Renamed the CMake library and generated binary identity from generic
   `NRF52840_DK` to `CIRCUIT_PLAYGROUND_BLUEFRUIT` in both target manifests.
@@ -422,7 +423,7 @@ These changes are uncommitted in their independent child repositories.
   descriptors and updater address/family records, and produces checksummed
   updater-UF2, ELF/HEX, and full SoftDevice recovery HEX artifacts.
 - Added `make pxt-cpb-build`. It creates a clean representative MakeCode
-  project, copies the uncommitted local CPB runtime into a disposable CODAL
+  project, copies the sibling CPB runtime into a disposable CODAL
   shell, forces PXT past its generic runtime cache, and compiles with the
   digest-pinned GCC 6 image. It verifies the generated CPB target/binary, linked
   userspace HF2/USB symbols and reset-only handoff override, Intel HEX bounds,
