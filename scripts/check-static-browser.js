@@ -624,7 +624,7 @@ async function checkExtensionsBrowser(page) {
         if (!row) throw new Error("Extensions toolbox entry is missing");
         row.setAttribute("data-browser-extension-entry", "true");
     });
-    await clickVisible(page, '[data-browser-extension-entry="true"]');
+    await page.click('[data-browser-extension-entry="true"]');
     await page.waitForFunction(() => [...document.querySelectorAll('[role="dialog"]')]
         .some(dialog => /\bExtensions\b/.test(dialog.textContent || "")), { timeout: 30000 });
 
