@@ -54,12 +54,14 @@ secret scan.
 ## Current production
 
 `makecode.jim.sh` currently serves release
-`v0.15.77-alpha.ad71346ed95d`. It provides:
+`v0.15.77-alpha.bc593f8725f1`. It provides:
 
 - the unified CPX/CPB editor and polished dark Standard theme;
 - exactly two validated built-in firmware caches;
 - same-origin project publishing and clean share links;
 - release-aware service workers and no implicit external requests;
+- a curated, offline-opening extension gallery with pinned recommendations,
+  consistent fallback artwork, installed-package visibility, and removal;
 - automatic repair of stale board dependencies and invalid native caches,
   verified against the affected Firefox profile on `basis`;
 - a rootless container on `psychosis`, bound to `127.0.0.1:3232`, with Apache
@@ -93,9 +95,6 @@ The site remains an alpha with `X-Robots-Tag: noindex, nofollow`.
 
 ### 3. Product and operations cleanup
 
-- Deploy and manually confirm the curated extension gallery and extension
-  removal workflow. Opening the gallery must remain offline; installing or
-  searching external packages is explicitly online.
 - Finish shared capability APIs and kid-friendly starter projects.
 - Remove remaining unused Maker assets and resolve useful `missing in sim`
   diagnostics where practical.
@@ -124,6 +123,9 @@ The site remains an alpha with `X-Robots-Tag: noindex, nofollow`.
   high-resolution Arcade displays are outside v1.
 - Current npm audit reports inherited vulnerabilities; controlled dependency
   upgrades are future work.
+- The headless Firefox gate currently reaches and passes the extension checks,
+  then times out waiting for Monaco's hover tooltip for an already-present CPB
+  unsupported-API diagnostic. Chromium production acceptance passes cleanly.
 
 ## Commands and acceptance gates
 
