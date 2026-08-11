@@ -40,8 +40,8 @@ depend on Microsoft services.
 
 | Repository | Role | Pinned commit |
 | --- | --- | --- |
-| `pxt/` | PXT framework fork | `9d444fc5779f` |
-| `pxt-circuit-playground/` | target/editor/simulator | `e12fa5e80cb8` |
+| `pxt/` | PXT framework fork | `b6fd06e058f0` |
+| `pxt-circuit-playground/` | target/editor/simulator | `43517a73d1ce` |
 | `codal-circuit-playground-bluefruit/` | CPB native runtime | `30d62c331ea2` |
 | `Adafruit_nRF52_Bootloader/` | CPB HF2 bootloader | `7836c7cc3d81` |
 
@@ -93,6 +93,9 @@ The site remains an alpha with `X-Robots-Tag: noindex, nofollow`.
 
 ### 3. Product and operations cleanup
 
+- Deploy and manually confirm the curated extension gallery and extension
+  removal workflow. Opening the gallery must remain offline; installing or
+  searching external packages is explicitly online.
 - Finish shared capability APIs and kid-friendly starter projects.
 - Remove remaining unused Maker assets and resolve useful `missing in sim`
   diagnostics where practical.
