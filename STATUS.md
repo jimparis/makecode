@@ -348,9 +348,10 @@ GitHub fork. Preserve their independent history when updating from upstream.
   deleted. The fork awaits board-dependency editor reloads, makes Monaco
   namespace lookup tolerate early theme notifications, uses package display
   names in the hardware chooser, keeps static share/API traffic on the serving
-  origin, and avoids invalid relative-CDN region discovery. A root lockfile
-  plus locked sub-application installs make the complete production PXT source
-  build reproducible.
+  origin, avoids invalid relative-CDN region discovery, and installs a
+  release-aware static service worker. A root lockfile plus locked
+  sub-application installs make the complete production PXT source build
+  reproducible.
 - Fixed a PXT board-switch race which removed conflicting package ancestors in
   parallel. Each removal rewrote the top-level package configuration, so a
   transitive no-op removal could finish last and restore the old board package.
@@ -550,13 +551,15 @@ to their public GitHub forks.
     header contrast, proves `/boards` is documentation, and requires missing
     `/static` assets to return 404. The current package contains 1,272 files
     with site digest
-    `748f803027285759b9e0134d1eebed0abfe8405ccad4e284d9534ba721104a09`
-    as release `v0.15.77-alpha.ada3a59ebcfa` and image ID
-    `695f0f05ccb8c7e9ca3907c397c5c7ae1972077a0d43eccc781550c672ebfbe1`.
-    The 22,077,440-byte version-named OCI archive has SHA-256
-    `cf7ea0fc0ded0597b0d5130565053773ef32307968ed7e6725837746216670cc`.
-    Its metadata records clean target commit `622a1cfc16ea` and clean PXT
-    framework commit `fcb723a568c3`, plus both source-tree digests.
+    `0f9b9a38f5fd682039a1710c3813cf408bdc1d7e7cebe9dcc629a2b9d177ce82`
+    as release `v0.15.77-alpha.74b4fe5b2d0d` and image ID
+    `0ef3654f9981dd37373d398191e0c60a6f387eb1c0f5b3d8a2c91217a5e1d71d`.
+    The 22,036,480-byte version-named OCI archive has SHA-256
+    `884f877fe2dbb628cccdcf598c92ae5f3a19b730f300e1574599447e05de71ed`.
+    Its metadata records clean target commit `b52cb7a35a50` and clean PXT
+    framework commit `5f2dcbcc2798`, both source-tree digests, and service
+    worker release ID
+    `f59889a19d5921ba5ed4f7f5bfe1ace4f28b94822fbd5c0bb7627270db3fff33`.
     Live ephemeral containers pass editor-shell, loopback, read-only,
     `Permissions-Policy`, alpha `X-Robots-Tag`, Chrome 151, and Firefox 140 ESR
     checks with exactly zero external requests. The checks cover PWA/offline
@@ -587,7 +590,7 @@ to their public GitHub forks.
     regression plus the real melody restart/project-reopen stress. No
     `pxt-common-packages` file is patched; all framework changes are maintained
     as source commits in the versioned PXT fork.
-15. Release `v0.15.77-alpha.ada3a59ebcfa` is deployed on `psychosis` as the
+15. Release `v0.15.77-alpha.74b4fe5b2d0d` is deployed on `psychosis` as the
     rootless `makecode` service. The remote OCI checksum, image ID, version
     label, read-only root, dropped capabilities, service user, `/tmp` tmpfs,
     loopback-only `127.0.0.1:3232` binding, and sole writable persistent share
@@ -611,6 +614,18 @@ to their public GitHub forks.
     simulators. CPX is shown first; its black PCB and the newer CPB's blue PCB
     are captured from stable board-specific simulator frames rather than a
     transient fallback frame. Personal session/path instructions were removed.
+17. The normal-profile-only TS9200 failures were traced to the PWA update
+    path, not Firefox fingerprinting or autoplay protection. Static packaging
+    left `@pxtRelId@`, `@targetUrl@`, and related placeholders unresolved in
+    the service workers, while static mode did not register an updated worker.
+    A previously installed worker could therefore keep obsolete root bundle
+    names indefinitely and mix compiler, target, and package generations; a
+    private window had no old worker and worked. Static workers now receive a
+    source-derived release ID, bypass the HTTP cache when checking for updates,
+    activate for static deployments, delete older MakeCode caches, and cache
+    exactly the two shipped CPX/CPB firmware images. Both local and public
+    Chrome 151/Firefox 140 ESR gates require the current worker to control the
+    page, reject stale MakeCode caches, and pass with zero console errors.
 
 ## Ordered unfinished work
 
@@ -778,7 +793,7 @@ exact two-image static cache, versioned static-package gate, CPB CODAL runtime,
 local PXT application/HF2 build, and CPB HF2 bootloader build are green.
 Continue ordered tasks 3 and 4 with CPB hardware enumeration,
 application-to-bootloader handoff, flashing, sound, and capability tests.
-Task 5's same-origin publishing release `v0.15.77-alpha.ada3a59ebcfa` is
+Task 5's same-origin publishing release `v0.15.77-alpha.74b4fe5b2d0d` is
 deployed at `https://makecode.jim.sh`; public Chrome/Firefox gates pass with
 zero external requests. No
 CPB was attached during the latest session, so no firmware was installed.
@@ -789,10 +804,10 @@ three project reopens, 50-cycle direct audio teardown, 20 instruction-audio
 cancellations, sequencer disposal, Firefox persistence and project
 export/import, and validated CPB and CPX UF2 downloads.
 The current reproducible local handoff and production release is
-`v0.15.77-alpha.ada3a59ebcfa`. Retain manual download confirmation, physical
+`v0.15.77-alpha.74b4fe5b2d0d`. Retain manual download confirmation, physical
 Chromebook/Linux checks, WebUSB, and all hardware acceptance. Local milestone
-commits now exist in the PXT framework (`fcb723a568c3`), PXT target
-(`622a1cfc16ea`), CODAL (`30d62c331ea2`), and bootloader (`7836c7cc3d81`)
+commits now exist in the PXT framework (`5f2dcbcc2798`), PXT target
+(`b52cb7a35a50`), CODAL (`30d62c331ea2`), and bootloader (`7836c7cc3d81`)
 repositories and are pushed to their public GitHub origins. Only versioned
 static releases, not
 a source checkout or firmware, are installed on `psychosis`.
