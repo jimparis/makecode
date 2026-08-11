@@ -35,23 +35,24 @@ depend on Microsoft services.
 - CPB application flash is `0x26000..<0xEA000`; the bootloader starts at
   `0xF4000`. Do not relax these bounds.
 
-## Repositories and current heads
+## Repository layout and deployed repair inputs
 
-| Repository | Role | Current head |
+| Repository | Role | Relevant commit |
 | --- | --- | --- |
-| `.` | orchestration, acceptance, deployment | `8ca438b73061` plus pending status update |
+| `.` | orchestration, acceptance, deployment | `8ca438b73061` |
 | `pxt/` | PXT framework fork | `9d444fc5779f` |
 | `pxt-circuit-playground/` | target/editor/simulator | `e12fa5e80cb8` |
 | `codal-circuit-playground-bluefruit/` | CPB native runtime | `30d62c331ea2` |
 | `Adafruit_nRF52_Bootloader/` | CPB HF2 bootloader | `7836c7cc3d81` |
 
-All have public `jimparis/*` origins; children retain `upstream`. Milestone
-commits should be pushed after a relevant gate and secret scan.
+All have public `jimparis/*` origins; children retain `upstream`. Use
+`make status` for current heads and cleanliness. Milestone commits should be
+pushed after a relevant gate and secret scan.
 
 ## Current production
 
 `makecode.jim.sh` currently serves release
-`v0.15.77-alpha.74b4fe5b2d0d`. It provides:
+`v0.15.77-alpha.ad71346ed95d`. It provides:
 
 - the unified CPX/CPB editor and polished dark Standard theme;
 - exactly two validated built-in firmware caches;
@@ -62,7 +63,7 @@ commits should be pushed after a relevant gate and secret scan.
 
 The site remains an alpha with `X-Robots-Tag: noindex, nofollow`.
 
-## In progress: persistent Firefox project repair
+## In progress: confirm the real Firefox project repair
 
 The affected live Firefox profile on `basis` was inspected read-only. Project
 source was intact. Two persisted problems combined:
@@ -73,7 +74,7 @@ source was intact. Two persisted problems combined:
    200; PXT stored that HTML as firmware with an empty native function table,
    causing the TS9200 shim errors and simulator spinner.
 
-Implemented and pushed:
+Implemented, pushed, and deployed:
 
 - PXT normalizes stale board-owned dependencies while preserving source and
   persists the repaired `pxt.json`.
@@ -85,23 +86,17 @@ Implemented and pushed:
 - The service worker no longer precaches absent/obsolete assets or the removed
   telemetry SDK.
 
-The framework, target, server, native-cache, docs, snippet, board-switch, and
-static-package gates pass. The first clean release build correctly caught the
-obsolete service-worker precache list before deployment. Rebuild the release,
-run both local browsers, deploy, run both public browsers, then confirm the
-real `basis` profile repairs itself without clearing site data.
+The framework, target, server, native-cache, docs, snippet, board-switch,
+static-package, local-browser, and public-browser gates pass. Chromium and
+Firefox both repaired the exact reproduced legacy state with zero external
+requests and zero console errors. The remaining step is to reload the real
+project on `basis` and confirm its profile repairs itself without clearing site
+data.
 
 ## Remaining work, in order
 
-### 1. Finish and deploy the browser-state repair
+### 1. Confirm the deployed browser-state repair
 
-- Rebuild with PXT `9d444fc5779f`.
-- Pass local Chrome and Firefox acceptance, including poisoned-cache repair.
-- Deploy through `ssh makecode@psychosis` using the documented versioned OCI
-  handoff; verify image identity, read-only/rootless constraints, share mount,
-  loopback binding, and rollback path.
-- Pass public Chrome and Firefox acceptance with zero unexpected external
-  requests or console errors.
 - Reload the existing project on `basis`; confirm its dependencies and native
   cache are repaired and the CPB simulator starts. Do not delete the profile or
   clear all site data.
