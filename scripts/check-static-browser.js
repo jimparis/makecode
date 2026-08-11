@@ -622,8 +622,9 @@ async function checkExtensionsBrowser(page) {
         const row = [...document.querySelectorAll(".blocklyTreeRow")].find(element =>
             (element.querySelector(".blocklyTreeLabel")?.textContent || "").trim() === "Extensions");
         if (!row) throw new Error("Extensions toolbox entry is missing");
-        row.click();
+        row.setAttribute("data-browser-extension-entry", "true");
     });
+    await clickVisible(page, '[data-browser-extension-entry="true"]');
     await page.waitForFunction(() => [...document.querySelectorAll('[role="dialog"]')]
         .some(dialog => /\bExtensions\b/.test(dialog.textContent || "")), { timeout: 30000 });
 
