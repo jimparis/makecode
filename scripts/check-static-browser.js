@@ -148,6 +148,47 @@ async function waitForSimulatorFrame(page, timeout = 30000) {
     fail("packaged editor has no simulator iframe");
 }
 
+async function waitForSimulatorBoard(page, expectedBoardId, timeout = 30000) {
+    const deadline = Date.now() + timeout;
+    let lastState;
+    while (Date.now() < deadline) {
+        const frame = page.frames().find(candidate => /simulator\.html/.test(candidate.url()));
+        if (frame) {
+            try {
+                lastState = await frame.evaluate(() => ({
+                    boardId: window.pxsim?.runtime?.board?.boardDefinition?.id,
+                    hasRuntime: !!window.pxsim?.runtime,
+                    hasBoard: !!window.pxsim?.runtime?.board
+                }));
+                if (lastState.boardId === expectedBoardId) return frame;
+            } catch (error) {
+                lastState = { detached: error.message };
+            }
+        }
+        await delay(100);
+    }
+    fail(`simulator did not start the selected board ${expectedBoardId}: ${JSON.stringify({
+        lastState,
+        pageErrors: page.__pageErrors,
+        consoleErrors: page.__consoleErrors
+    })}`);
+}
+
+async function captureReadmeScreenshot(page, filename) {
+    if (process.env.CAPTURE_README_SCREENSHOTS !== "1") return;
+    const directory = path.join(workspace, "docs", "images");
+    fs.mkdirSync(directory, { recursive: true });
+    await page.setViewport({ width: 1280, height: 720, deviceScaleFactor: 1 });
+    await clickVisible(page, ".blocks-menuitem");
+    await page.waitForFunction(() => /set\s+all\s+pixels\s+to/.test(document.body.innerText),
+        { timeout: 30000 });
+    await delay(1000);
+    await page.screenshot({ path: path.join(directory, filename), type: "png" });
+    await clickVisible(page, ".javascript-menuitem");
+    await page.waitForFunction(() => window.monaco && monaco.editor.getModels()
+        .some(model => /main\.ts$/.test(model.uri.path)), { timeout: 30000 });
+}
+
 async function instrumentSimulatorAudio(frame) {
     await frame.waitForFunction(() => window.pxsim && pxsim.runtime &&
         pxsim.runtime.board && pxsim.AudioContextManager, { timeout: 30000 });
@@ -826,6 +867,7 @@ async function main() {
         await page.click("[role=dialog] [aria-label=\"Bluefruit\"]");
         await page.waitForFunction(() => window.pxt && pxt.appTargetVariant === "nrf52840" &&
             !document.body.classList.contains("ReactModal__Body--open"), { timeout: 30000 });
+        await waitForSimulatorBoard(page, "adafruit-circuit-playground-bluefruit");
         await delay(2000);
         const cpbState = await page.evaluate(() => ({
             variant: pxt.appTargetVariant,
@@ -850,6 +892,7 @@ async function main() {
             model.setValue(`${value}\nlight.setAll(0xff0000)\n`);
         }, marker);
         await delay(2000);
+        await captureReadmeScreenshot(page, "editor-bluefruit.png");
 
         const publishedShare = await publishAndReopenProject(
             page, browser, browserName, origin, marker, "nrf52840"
@@ -872,6 +915,7 @@ async function main() {
         await page.click("[role=dialog] [aria-label=\"Express\"]");
         await page.waitForFunction(() => pxt.appTargetVariant === "samd21" &&
             !document.body.classList.contains("ReactModal__Body--open"), { timeout: 30000 });
+        await waitForSimulatorBoard(page, "adafruit-circuit-playground-express");
         await delay(2000);
 
         const cpxState = await page.evaluate(() => ({
@@ -882,6 +926,7 @@ async function main() {
         assert(cpxState.variant === "samd21", "CPX board switch selected the wrong compile variant");
         assert(/\bNETWORK\b/.test(cpxState.text), "CPX toolbox is missing its Network category");
         assert(cpxState.source.includes(marker), "board switch did not preserve JavaScript source");
+        await captureReadmeScreenshot(page, "editor-express.png");
 
         await page.reload({ waitUntil: "networkidle2", timeout: 60000 });
         await page.waitForFunction(() => window.pxt && pxt.appTargetVariant === "samd21" &&

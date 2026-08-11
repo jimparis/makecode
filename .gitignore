@@ -1,4 +1,5 @@
-# The three projects below are independent Git repositories.
+# The projects below are independent Git repositories.
+/pxt/
 /pxt-circuit-playground/
 /codal-circuit-playground-bluefruit/
 /Adafruit_nRF52_Bootloader/

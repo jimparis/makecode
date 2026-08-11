@@ -9,6 +9,7 @@ const { spawnSync } = require("child_process");
 
 const workspace = path.resolve(__dirname, "..");
 const pxtDir = path.join(workspace, "pxt-circuit-playground");
+const pxtCoreDir = path.join(workspace, "pxt");
 const generatedSite = path.join(pxtDir, "built", "static-release");
 const outputDir = path.join(workspace, "artifacts", ".static-staging");
 const finalOutputDir = path.join(workspace, "artifacts", "static");
@@ -94,8 +95,10 @@ if (previousManifest) {
     }
 }
 const pxtCommit = capture("git", ["-C", pxtDir, "rev-parse", "HEAD"]);
+const pxtCoreCommit = capture("git", ["-C", pxtCoreDir, "rev-parse", "HEAD"]);
 const sourceDateEpoch = capture("git", ["-C", pxtDir, "show", "-s", "--format=%ct", "HEAD"]);
 const pxtSourceDigest = gitTreeDigest(pxtDir);
+const pxtCoreSourceDigest = gitTreeDigest(pxtCoreDir);
 const releaseBuilderDigest = crypto.createHash("sha256")
     .update(fs.readFileSync(__filename))
     .update(fs.readFileSync(path.join(workspace, "deployment", "Containerfile")))
@@ -109,8 +112,8 @@ fs.mkdirSync(outputDir, { recursive: true });
 
 run("podman", [
     "run", "--rm",
-    "-v", `${pxtDir}:/work:Z`,
-    "-w", "/work",
+    "-v", `${workspace}:/workspace:Z`,
+    "-w", "/workspace/pxt-circuit-playground",
     nodeImage,
     "node", "scripts/pxt-static-check.js", "built/static-release"
 ]);
@@ -136,6 +139,7 @@ if (!/^[A-Za-z0-9][A-Za-z0-9_.-]{0,127}$/.test(releaseVersion)) {
 }
 const sameReleaseInputs = previousMetadata.reproducibleManifestVersion === 2 &&
     previousMetadata.pxtSourceDigest === pxtSourceDigest &&
+    previousMetadata.pxtCoreSourceDigest === pxtCoreSourceDigest &&
     previousMetadata.releaseBuilderDigest === releaseBuilderDigest;
 if (sameReleaseInputs && previousManifest && previousManifest !== manifest) {
     const parse = value => new Map(value.trim().split("\n").filter(Boolean)
@@ -295,8 +299,11 @@ fs.writeFileSync(path.join(outputDir, "BUILD-METADATA.json"), `${JSON.stringify(
     reproducibleManifestVersion: 2,
     reproducibleOciArchiveVersion: 2,
     pxtCommit,
+    pxtCoreCommit,
     pxtDirty: capture("git", ["-C", pxtDir, "status", "--porcelain"]).length > 0,
+    pxtCoreDirty: capture("git", ["-C", pxtCoreDir, "status", "--porcelain"]).length > 0,
     pxtSourceDigest,
+    pxtCoreSourceDigest,
     releaseBuilderDigest,
     targetVersion,
     releaseVersion,

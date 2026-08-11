@@ -66,22 +66,23 @@ WebUSB remains a public-v1 gate, not an alpha gate.
   v1.
 - Develop as `jim` under `/home/jim/git/makecode`. Use the `makecode` account
   only for production service operations on psychosis.
-- Keep the editor, CODAL runtime, and bootloader as independent peer Git
-  repositories. They are not submodules. The workspace root owns orchestration
-  and cross-project documentation.
-- Keep `pxt-core` and `pxt-common-packages` as exact-version npm build inputs
-  for now. The locked, idempotent `pxt-core` bundle patch is acceptable while
-  it remains small and guarded; if target-specific fixes continue to grow,
-  create a separate upstream-tracking PXT fork and build it from source rather
-  than accumulating opaque bundle rewrites.
+- Keep the PXT framework, editor target, CODAL runtime, and bootloader as
+  independent peer Git repositories for now. They remain normal checkouts, not
+  submodules, pending an explicit decision on whether the orchestration root
+  should own their exact revisions as gitlinks.
+- Build `pxt-core` from the source-controlled `jimparis/pxt` fork based on the
+  exact upstream `v13.1.5` tag. Do not patch generated or minified JavaScript.
+  Keep `pxt-common-packages` as an exact-version npm build input.
 
 ## Repository layout and pinned baselines
 
-The workspace root is a fourth, orchestration-only Git repository:
+The workspace root is an orchestration-only Git repository coordinating four
+source repositories (five Git repositories total):
 
 | Path | Role | Baseline | Current remote state |
 | --- | --- | --- | --- |
 | `.` | Orchestration/deployment | initial commit `006bc707d89c` | `origin` = `jimparis/makecode` |
+| `pxt/` | MakeCode/PXT framework | upstream tag `v13.1.5`, commit `e717183abbb0` | `origin` = `jimparis/pxt`; preserved `upstream` |
 | `pxt-circuit-playground/` | PXT target/editor | `microsoft/pxt-maker` commit `de46b65eaa71ce6f2eb0f29f5db7fb69d33cc63d` | `origin` + preserved `upstream` |
 | `codal-circuit-playground-bluefruit/` | CPB native runtime | `mmoskal/codal-nrf52840-dk` commit `00d69e508749b33aadd91f43e68abd542467fb8f` | `origin` + preserved `upstream` |
 | `Adafruit_nRF52_Bootloader/` | CPB bootloader | `adafruit/Adafruit_nRF52_Bootloader` commit `c67f0bcf0fa8e841426335b1bbde91cda6ca1f50` | `origin` + preserved `upstream` |
@@ -101,6 +102,7 @@ Useful upstream reference points:
 Public GitHub destinations created and first pushed on 2026-08-11 are:
 
 - `jimparis/makecode` for the orchestration root
+- `jimparis/pxt`
 - `jimparis/pxt-circuit-playground`
 - `jimparis/codal-circuit-playground-bluefruit`
 - `jimparis/Adafruit_nRF52_Bootloader`
@@ -247,7 +249,7 @@ bootloader USB IDs. Chromebook Chrome needs no local helper application.
 ### Completed workspace work
 
 - Created the orchestration repository at `/home/jim/git/makecode`.
-- Created the three peer child repositories at the paths listed above.
+- Created the four peer source repositories at the paths listed above.
 - Renamed each child's source remote to `upstream` and pinned its agreed base
   commit on a local `main` branch.
 - Added the root `AGENTS.md`, `README.md`, `.gitignore`, and Makefile.
@@ -340,14 +342,21 @@ GitHub fork. Preserve their independent history when updating from upstream.
   fallback, while both choices are available in the picker and persist across
   reloads. Enabled the editor's Save Project command so offline project
   export/import is a supported product path rather than a hidden PXT feature.
-- Added an exact-version, idempotent postinstall/CI patch for the locked
-  `pxt-core@13.1.5` browser bundle. It awaits board-dependency editor reloads
-  before continuing and makes Monaco toolbox namespace lookup tolerate the
-  short pre-initialization window used by early theme notifications. It also
-  uses package display names in the hardware chooser, keeps static-package
-  share URLs on the serving origin, and routes static localhost API traffic to
-  the same origin. The patch rejects an unexpected bundle/version instead of
-  silently changing unknown upstream code.
+- Forked `microsoft/pxt` at the exact `v13.1.5` tag and moved every local PXT
+  change into readable TypeScript source. The target consumes this local fork
+  through `file:../pxt`; the former generated/minified JavaScript patch is
+  deleted. The fork awaits board-dependency editor reloads, makes Monaco
+  namespace lookup tolerate early theme notifications, uses package display
+  names in the hardware chooser, keeps static share/API traffic on the serving
+  origin, and avoids invalid relative-CDN region discovery. A root lockfile
+  plus locked sub-application installs make the complete production PXT source
+  build reproducible.
+- Fixed a PXT board-switch race which removed conflicting package ancestors in
+  parallel. Each removal rewrote the top-level package configuration, so a
+  transitive no-op removal could finish last and restore the old board package.
+  Conflict removals now run serially. Browser acceptance requires the selected
+  CPB and CPX simulator board IDs to start, guarding the package/variant mismatch
+  that produced TS9200 missing-shim diagnostics and an endless spinner.
 - Added local `make static-browser-check`/`make static-firefox-check` and
   public-origin `make production-browser-check`/`make
   production-firefox-check` gates. They run with external requests blocked;
@@ -561,7 +570,7 @@ to their public GitHub forks.
     the Import UI and validates downloaded CPB and CPX UF2s block-by-block for
     structure, family ID, and flash bounds. The Quadlet and OCI version label
     agree and validate locally.
-13. The Monaco theme-regeneration race is guarded in the locked PXT bundle:
+13. The Monaco theme-regeneration race is guarded in the PXT source fork:
     namespace lookup treats the brief pre-initialization window as an empty
     map. Automated startup with a removed saved theme now resets to Standard
     without a page exception; high-contrast/Standard selection and persistence
@@ -572,8 +581,8 @@ to their public GitHub forks.
     now guards that exported entry point against reentry. Chrome 151 and
     Firefox 140 ESR both pass the instruction-audio and sequencer teardown
     regression plus the real melody restart/project-reopen stress. No
-    `pxt-common-packages` file is patched; the separate version-guarded
-    `pxt-core` browser patch is reproducibly applied after installation.
+    `pxt-common-packages` file is patched; all framework changes are maintained
+    as source commits in the versioned PXT fork.
 15. Release `v0.15.77-alpha.10821a483e4d` is deployed on `psychosis` as the
     rootless `makecode` service. The remote OCI checksum, image ID, version
     label, read-only root, dropped capabilities, service user, `/tmp` tmpfs,
@@ -617,7 +626,7 @@ to their public GitHub forks.
   option, and add a reset/migration path for stuck appearance state. Fresh,
   high-contrast, standard-reset, reload, and invalid-theme fallback paths now
   pass in Chrome and Firefox, and the early Monaco/toolbox race is guarded by
-  the locked-version vendor patch. Retain physical Chromebook acceptance.
+  the PXT source fork. Retain physical Chromebook acceptance.
 - The visual theme audit now covers home, editor, every toolbox category's
   idle/selected state, flyouts, dialogs, menus, Monaco, simulator controls, and
   Standard/high contrast in Chrome and Firefox. The former selected-Math
@@ -625,7 +634,7 @@ to their public GitHub forks.
   colored toolbox, and contrast gate. Retain physical Chromebook/desktop
   review for hover/focus/disabled states and subjective polish. The live
   Adafruit site remains a visual reference only: it uses an obsolete PXT stack,
-  while this target uses `pxt-core 13.1.5` without its telemetry.
+  while this target source-builds its telemetry-free PXT 13.1.5 fork.
 - Reproduce and fix color-picker positioning at Chromebook resolutions and
   80–200% zoom. Automated Chrome and Firefox checks now pass at 1024x600 and
   80%, 125%, and 200% CSS-viewport equivalents; retain physical Chromebook
@@ -679,6 +688,9 @@ to their public GitHub forks.
 - Root Makefile targets cover release artifacts plus local and public Chrome/
   Firefox acceptance. The service-account deployment flow remains documented
   rather than wrapped in an unattended mutation target.
+- PXT is built in production mode from the pinned local source fork before the
+  target is installed. Release identity and metadata include both the target
+  and framework commits, dirty states, and source-tree digests.
 - Build local CPX/CPB firmware caches into the static package. The current
   CPX base cache and reproducible custom CPB base cache are included and
   validated; five obsolete cache entries are automatically pruned from the
@@ -769,7 +781,8 @@ export/import, and validated CPB and CPX UF2 downloads.
 The current reproducible local handoff and production release is
 `v0.15.77-alpha.10821a483e4d`. Retain manual download confirmation, physical
 Chromebook/Linux checks, WebUSB, and all hardware acceptance. Local milestone
-commits now exist in the PXT (`f0ca081d28c0`), CODAL (`30d62c331ea2`), and
-bootloader (`7836c7cc3d81`) repositories and are pushed to their public GitHub
-origins. Only versioned static releases, not
+commits now exist in the PXT framework (`fcb723a568c3`), PXT target
+(`622a1cfc16ea`), CODAL (`30d62c331ea2`), and bootloader (`7836c7cc3d81`)
+repositories and are pushed to their public GitHub origins. Only versioned
+static releases, not
 a source checkout or firmware, are installed on `psychosis`.

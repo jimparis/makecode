@@ -5,9 +5,10 @@ agreed plan, current implementation state, known build failures, and ordered
 unfinished work. Update it whenever a milestone, blocker, or important design
 decision changes.
 
-This directory orchestrates three independent repositories for the unified
+This directory orchestrates four independent repositories for the unified
 Circuit Playground MakeCode project:
 
+- `pxt/` — source-built MakeCode/PXT framework fork.
 - `pxt-circuit-playground/` — editor, board packages, simulator, docs, CI, and
   deployment assets.
 - `codal-circuit-playground-bluefruit/` — CPB-specific nRF52840 native runtime.
