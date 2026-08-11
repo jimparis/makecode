@@ -174,11 +174,17 @@ async function waitForSimulatorBoard(page, expectedBoardId, timeout = 30000) {
     })}`);
 }
 
-async function captureReadmeScreenshot(page, filename) {
+async function captureReadmeScreenshot(page, filename, source) {
     if (process.env.CAPTURE_README_SCREENSHOTS !== "1") return;
     const directory = path.join(workspace, "docs", "images");
     fs.mkdirSync(directory, { recursive: true });
     await page.setViewport({ width: 1280, height: 720, deviceScaleFactor: 1 });
+    await page.evaluate(value => {
+        const model = monaco.editor.getModels().find(candidate => /main\.ts$/.test(candidate.uri.path));
+        model.setValue(value);
+    }, "light.setAll(0xff0000)\ninput.buttonA.onEvent(ButtonEvent.Click, function () {\n" +
+        "    light.setAll(0x007fff)\n})\n");
+    await delay(500);
     await clickVisible(page, ".blocks-menuitem");
     await page.waitForFunction(() => /set\s+all\s+pixels\s+to/.test(document.body.innerText),
         { timeout: 30000 });
@@ -187,6 +193,11 @@ async function captureReadmeScreenshot(page, filename) {
     await clickVisible(page, ".javascript-menuitem");
     await page.waitForFunction(() => window.monaco && monaco.editor.getModels()
         .some(model => /main\.ts$/.test(model.uri.path)), { timeout: 30000 });
+    await page.evaluate(value => {
+        const model = monaco.editor.getModels().find(candidate => /main\.ts$/.test(candidate.uri.path));
+        model.setValue(value);
+    }, source);
+    await delay(500);
 }
 
 async function instrumentSimulatorAudio(frame) {
@@ -832,7 +843,9 @@ async function main() {
 
         await page.click(".newprojectcard");
         await page.waitForSelector("#projectNameInput");
-        await page.type("#projectNameInput", "Browser acceptance");
+        const projectName = process.env.CAPTURE_README_SCREENSHOTS === "1"
+            ? "Pixel buttons" : "Browser acceptance";
+        await page.type("#projectNameInput", projectName);
         await page.evaluate(() => {
             const create = [...document.querySelectorAll("[role=dialog] button")]
                 .find(element => element.innerText.trim() === "Create");
@@ -892,7 +905,8 @@ async function main() {
             model.setValue(`${value}\nlight.setAll(0xff0000)\n`);
         }, marker);
         await delay(2000);
-        await captureReadmeScreenshot(page, "editor-bluefruit.png");
+        await captureReadmeScreenshot(page, "editor-bluefruit.png",
+            `${marker}\nlight.setAll(0xff0000)\n`);
 
         const publishedShare = await publishAndReopenProject(
             page, browser, browserName, origin, marker, "nrf52840"
@@ -926,7 +940,8 @@ async function main() {
         assert(cpxState.variant === "samd21", "CPX board switch selected the wrong compile variant");
         assert(/\bNETWORK\b/.test(cpxState.text), "CPX toolbox is missing its Network category");
         assert(cpxState.source.includes(marker), "board switch did not preserve JavaScript source");
-        await captureReadmeScreenshot(page, "editor-express.png");
+        await captureReadmeScreenshot(page, "editor-express.png",
+            `${marker}\nlight.setAll(0xff0000)\n`);
 
         await page.reload({ waitUntil: "networkidle2", timeout: 60000 });
         await page.waitForFunction(() => window.pxt && pxt.appTargetVariant === "samd21" &&
@@ -1108,7 +1123,7 @@ async function main() {
         for (let index = 0; index < 3; index++) {
             await clickVisible(page, '[title="Home"]');
             await page.waitForSelector(".newprojectcard", { visible: true, timeout: 30000 });
-            await openProjectByName(page, "Browser acceptance");
+            await openProjectByName(page, projectName);
             await page.waitForFunction(value => window.pxt && pxt.appTargetVariant === "nrf52840" &&
                 location.hash === "#editor" && window.monaco && monaco.editor.getModels()
                     .some(model => /main\.ts$/.test(model.uri.path) && model.getValue().includes(value)),

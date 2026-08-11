@@ -1,39 +1,64 @@
-# Circuit Playground MakeCode workspace
+# Circuit Playground MakeCode
 
-This workspace builds a single MakeCode editor for the Adafruit Circuit
-Playground Express and Circuit Playground Bluefruit. It keeps the editor,
-nRF52840 runtime, and Bluefruit bootloader as independent upstream-trackable
-repositories while providing one place for development and release commands.
+This project builds and hosts one modern, self-contained MakeCode editor for
+both Adafruit Circuit Playground boards:
 
-See [`STATUS.md`](STATUS.md) for the full implementation plan, current state,
-known failures, and next tasks.
+- Circuit Playground Express (CPX, SAMD21)
+- Circuit Playground Bluefruit (CPB, nRF52840)
 
-## Layout
+**Try the live editor: [makecode.jim.sh](https://makecode.jim.sh/)**
+
+| Circuit Playground Bluefruit | Circuit Playground Express |
+| --- | --- |
+| ![A MakeCode Blocks project running in the Circuit Playground Bluefruit simulator](docs/images/editor-bluefruit.png) | ![The same MakeCode Blocks project running in the Circuit Playground Express simulator](docs/images/editor-express.png) |
+
+## Why this exists
+
+Adafruit's original [Circuit Playground MakeCode
+editor](https://makecode.adafruit.com/) focuses on the Circuit Playground
+Express. Microsoft's [MakeCode Maker editor](https://maker.makecode.com/) also
+has Circuit Playground board definitions, including Bluefruit support.
+However, both sites use relatively old MakeCode stacks, and the Maker editor's
+Circuit Playground support in particular has substantial bugs.
+
+We wanted one maintained site where projects can move between CPX and CPB
+without losing source, where built-in compilation and simulation work without
+Microsoft cloud services, and where both boards share a polished,
+Circuit-Playground-specific interface.
+
+The hosted editor includes self-hosted immutable share links. Normal editor
+sessions make no telemetry or other implicit third-party requests; GitHub and
+external packages are optional, user-initiated features.
+
+## Repository layout
+
+This orchestration repository coordinates four independently versioned source
+repositories:
 
 | Directory | Purpose |
 | --- | --- |
-| `pxt-circuit-playground/` | MakeCode target, blocks, simulator, documentation, and web deployment |
+| `pxt/` | Source-built fork of the MakeCode/PXT framework |
+| `pxt-circuit-playground/` | Circuit Playground target, blocks, simulator, documentation, and web package |
 | `codal-circuit-playground-bluefruit/` | Circuit Playground Bluefruit CODAL runtime |
 | `Adafruit_nRF52_Bootloader/` | Bluefruit UF2/DFU bootloader and HF2 WebUSB support |
 
-The root repository tracks orchestration and documentation only. The three
-child directories are deliberately normal Git repositories rather than
-submodules so each fork can be developed, synchronized, and contributed
-upstream independently.
+Each source repository retains an `upstream` remote so fixes can be compared
+with and contributed back to the original project. See [STATUS.md](STATUS.md)
+for the implementation state, reproducible baselines, test results, and
+remaining hardware acceptance work.
 
-## Development
+## Building and testing
 
-The reproducible editor toolchain runs in a Node container:
+The top-level Makefile runs the editor and native toolchains in pinned
+containers. A typical editor build is:
 
 ```sh
 make pxt-install
 make pxt-check
-make pxt-cpb-build
 make pxt-serve
 ```
 
-The Bluefruit runtime contract and pinned native build are available from the
-same top-level Makefile:
+The complete native and release gates are:
 
 ```sh
 make codal-check
@@ -41,43 +66,28 @@ make codal-build
 make bootloader-check
 make bootloader-build
 make static-build
+make static-firefox-check
 ```
 
-`codal-check` cross-checks the CPB pin/USB identities across the editor,
-runtime, and bootloader, and validates the native memory/linker bounds.
-`pxt-cpb-build` compiles a representative MakeCode program against a clean
-copy of the checked-out CPB runtime, verifies the linked userspace HF2 symbols,
-UF2 family and application bounds, and writes checksummed output under
-`artifacts/pxt-cpb/`.
-`codal-build` uses the locked CODAL dependency commits and a digest-pinned
-toolchain container. It writes checksummed local output under
-`artifacts/codal/`; that directory is ignored by Git and is not a published
-release.
+`static-build` produces a versioned, read-only container and runs the full
+Chrome browser acceptance suite. The Firefox gate additionally tests offline
+project export/import and validates downloaded CPX and CPB UF2 files. Release
+artifacts are written beneath `artifacts/`, which is intentionally not tracked
+by Git.
 
-`bootloader-build` initializes only the four pinned top-level bootloader
-submodules, uses a workspace-local Python environment for `intelhex`, builds
-the CPB image plus the required nRF52840/nRF52832 Feather regressions, and
-writes a checksummed CPB updater UF2 and complete SoftDevice recovery HEX under
-`artifacts/bootloader/`. These images are development artifacts until they pass
-the hardware acceptance matrix in `STATUS.md`.
+Deployment uses the static package baked into the container; it does not
+mount a source checkout over the application. See
+[deployment/README.md](deployment/README.md) for the service layout, share-data
+backup procedure, and rollback process.
 
-`static-build` validates the complete editor first, normalizes PXT's generated
-manifest timestamp, verifies repeatable site and image digests, builds a
-rootless read-only scratch image with a pinned Go builder, and performs live
-loopback static-site and publishing-API smoke tests. The site, OCI image
-archive, rendered Quadlet, and
-checksums are written under `artifacts/static/`; see
-[`deployment/README.md`](deployment/README.md) for the service-account handoff.
+## Project status
 
-The development server listens on ports 3232 and 3233. Production is generated
-as a static package and served behind Apache TLS at `makecode.jim.sh`.
+The editor and self-hosted sharing service are deployed as an alpha. Automated
+Chrome and Firefox acceptance is extensive, but physical-board validation is
+still required for CPB WebUSB flashing, bootloader recovery, speaker cold
+boots, and the full peripheral matrix. Do not treat generated CPB bootloader
+artifacts as hardware-proven releases yet.
 
-For a future Codex session, start in this directory:
-
-```sh
-cd ~/git/makecode
-codex
-```
-
-To resume an older chat whose saved directory differs, choose the current
-directory when prompted or pass `-C ~/git/makecode` explicitly.
+This project is independently maintained and is not an official Adafruit or
+Microsoft service. Microsoft MakeCode/PXT and the Adafruit-derived components
+retain their respective upstream licenses and trademarks.
