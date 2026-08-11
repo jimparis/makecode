@@ -617,6 +617,46 @@ async function auditToolboxContrast(page, label) {
     }
 }
 
+async function checkExtensionsBrowser(page) {
+    await page.evaluate(() => {
+        const row = [...document.querySelectorAll(".blocklyTreeRow")].find(element =>
+            (element.querySelector(".blocklyTreeLabel")?.textContent || "").trim() === "Extensions");
+        if (!row) throw new Error("Extensions toolbox entry is missing");
+        row.click();
+    });
+    await page.waitForFunction(() => [...document.querySelectorAll('[role="dialog"]')]
+        .some(dialog => /\bExtensions\b/.test(dialog.textContent || "")), { timeout: 30000 });
+
+    const recommended = await page.evaluate(() => ({
+        titles: [...document.querySelectorAll(".common-extension-card-title")]
+            .map(element => element.textContent.trim()).sort(),
+        fallbackCount: document.querySelectorAll(".common-extension-card-fallback-image").length,
+        text: document.querySelector('[role="dialog"]')?.innerText || ""
+    }));
+    assert(recommended.titles.join(",") === "Adafruit CRICKIT,Adafruit Seesaw",
+        `recommended extensions are not the curated set: ${JSON.stringify(recommended)}`);
+    assert(recommended.fallbackCount === 2,
+        `extensions without artwork do not have consistent fallbacks: ${JSON.stringify(recommended)}`);
+    assert(!/\b(?:tests|base|mixer|pixel|settings)\b/i.test(recommended.text),
+        `internal packages leaked into the extension gallery: ${JSON.stringify(recommended)}`);
+    assert(/downloaded only when you choose one/i.test(recommended.text),
+        "extension network behavior is not explained to the user");
+
+    await page.evaluate(() => {
+        const tab = [...document.querySelectorAll('[role="tab"]')]
+            .find(element => element.textContent.trim() === "Installed");
+        if (!tab) throw new Error("Installed extensions tab is missing");
+        tab.click();
+    });
+    await page.waitForFunction(() => /no additional extensions/i.test(
+        document.querySelector('[aria-label="Installed extensions"]')?.textContent || ""),
+    { timeout: 30000 });
+
+    await page.keyboard.press("Escape");
+    await page.waitForFunction(() => !document.body.classList.contains("ReactModal__Body--open"),
+        { timeout: 30000 });
+}
+
 async function checkHomeLayout(page, width, height, label) {
     await page.setViewport({ width, height, deviceScaleFactor: 1 });
     await delay(300);
@@ -1063,6 +1103,7 @@ async function main() {
             !cpbState.highContrast,
         "editor did not start with the standard dark theme");
         await auditToolboxContrast(page, "standard CPB theme");
+        await checkExtensionsBrowser(page);
 
         await clickVisible(page, ".javascript-menuitem");
         await page.waitForFunction(() => window.monaco && monaco.editor.getModels()
