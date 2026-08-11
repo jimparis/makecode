@@ -842,6 +842,36 @@ async function main() {
         await page.waitForSelector(".newprojectcard", { timeout: 30000 });
         assert(await page.title() === "Circuit Playground MakeCode", "static editor has the wrong title");
 
+        await page.waitForFunction(async expectedCache => {
+            if (!("serviceWorker" in navigator) || !navigator.serviceWorker.controller) return false;
+            const registration = await navigator.serviceWorker.getRegistration("/");
+            if (!registration?.active) return false;
+            const names = await caches.keys();
+            return names.includes(expectedCache);
+        }, { timeout: 60000 }, `makecode;;${metadata.serviceWorkerReleaseId}`);
+        const serviceWorkerState = await page.evaluate(async expectedCache => {
+            const registration = await navigator.serviceWorker.getRegistration("/");
+            const cacheNames = await caches.keys();
+            const cache = await caches.open(expectedCache);
+            const requests = await cache.keys();
+            return {
+                activeScript: registration?.active?.scriptURL,
+                controllerScript: navigator.serviceWorker.controller?.scriptURL,
+                cacheNames,
+                firmware: requests.map(request => new URL(request.url).pathname)
+                    .filter(pathname => /^\/hexcache\/[0-9a-f]{64}\.hex$/.test(pathname))
+                    .sort()
+            };
+        }, `makecode;;${metadata.serviceWorkerReleaseId}`);
+        assert(serviceWorkerState.activeScript === `${origin}/serviceworker.js` &&
+            serviceWorkerState.controllerScript === `${origin}/serviceworker.js`,
+        `static service worker is not active and controlling the page: ${JSON.stringify(serviceWorkerState)}`);
+        assert(serviceWorkerState.cacheNames.filter(name => name.startsWith("makecode;")).join(",") ===
+            `makecode;;${metadata.serviceWorkerReleaseId}`,
+        `stale MakeCode caches survived activation: ${JSON.stringify(serviceWorkerState.cacheNames)}`);
+        assert(serviceWorkerState.firmware.length === 2,
+            `service worker did not cache both built-in firmware images: ${JSON.stringify(serviceWorkerState.firmware)}`);
+
         const manifest = await page.evaluate(async () => {
             const response = await fetch("/sim.webmanifest");
             if (!response.ok) throw new Error(`manifest returned HTTP ${response.status}`);

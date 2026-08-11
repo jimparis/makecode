@@ -106,12 +106,18 @@ const releaseBuilderDigest = crypto.createHash("sha256")
     .update(fs.readFileSync(path.join(workspace, "deployment", "server", "go.mod")))
     .update(fs.readFileSync(path.join(workspace, "deployment", "server", "main.go")))
     .digest("hex");
+const serviceWorkerReleaseId = crypto.createHash("sha256")
+    .update(pxtSourceDigest)
+    .update(pxtCoreSourceDigest)
+    .update(releaseBuilderDigest)
+    .digest("hex");
 fs.rmSync(generatedSite, { recursive: true, force: true });
 fs.rmSync(outputDir, { recursive: true, force: true });
 fs.mkdirSync(outputDir, { recursive: true });
 
 run("podman", [
     "run", "--rm",
+    "-e", `PXT_STATIC_RELEASE_ID=${serviceWorkerReleaseId}`,
     "-v", `${workspace}:/workspace:Z`,
     "-w", "/workspace/pxt-circuit-playground",
     nodeImage,
@@ -305,6 +311,7 @@ fs.writeFileSync(path.join(outputDir, "BUILD-METADATA.json"), `${JSON.stringify(
     pxtSourceDigest,
     pxtCoreSourceDigest,
     releaseBuilderDigest,
+    serviceWorkerReleaseId,
     targetVersion,
     releaseVersion,
     sourceDateEpoch: Number(sourceDateEpoch),
