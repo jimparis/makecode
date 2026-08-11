@@ -58,50 +58,16 @@ pushed after a relevant gate and secret scan.
 - exactly two validated built-in firmware caches;
 - same-origin project publishing and clean share links;
 - release-aware service workers and no implicit external requests;
+- automatic repair of stale board dependencies and invalid native caches,
+  verified against the affected Firefox profile on `basis`;
 - a rootless container on `psychosis`, bound to `127.0.0.1:3232`, with Apache
   terminating TLS and a persistent share-data mount.
 
 The site remains an alpha with `X-Robots-Tag: noindex, nofollow`.
 
-## In progress: confirm the real Firefox project repair
-
-The affected live Firefox profile on `basis` was inspected read-only. Project
-source was intact. Two persisted problems combined:
-
-1. An older board switch left CPX-owned `infrared` and redundant shared
-   packages at the root of a CPB project.
-2. Missing native hash `7189a7...845e` returned the editor HTML shell with HTTP
-   200; PXT stored that HTML as firmware with an empty native function table,
-   causing the TS9200 shim errors and simulator spinner.
-
-Implemented, pushed, and deployed:
-
-- PXT normalizes stale board-owned dependencies while preserving source and
-  persists the repaired `pxt.json`.
-- PXT rejects and replaces HTML-shaped native cache records.
-- CPX/CPB-specific packages explicitly mark incompatible compile variants.
-- Missing firmware/script paths return 404 instead of the SPA shell.
-- Browser acceptance seeds the exact legacy dependency shape and poisoned
-  cache and requires automatic recovery.
-- The service worker no longer precaches absent/obsolete assets or the removed
-  telemetry SDK.
-
-The framework, target, server, native-cache, docs, snippet, board-switch,
-static-package, local-browser, and public-browser gates pass. Chromium and
-Firefox both repaired the exact reproduced legacy state with zero external
-requests and zero console errors. The remaining step is to reload the real
-project on `basis` and confirm its profile repairs itself without clearing site
-data.
-
 ## Remaining work, in order
 
-### 1. Confirm the deployed browser-state repair
-
-- Reload the existing project on `basis`; confirm its dependencies and native
-  cache are repaired and the CPB simulator starts. Do not delete the profile or
-  clear all site data.
-
-### 2. CPB hardware/runtime acceptance
+### 1. CPB hardware/runtime acceptance
 
 - Install and test the unofficial HF2-capable CPB bootloader; retain UF2, USB
   DFU, and recovery paths.
@@ -114,7 +80,7 @@ data.
   microphone/loudness, analog/digital I/O, serial, and repeated music. CPB
   touch and storage remain disabled until native support exists.
 
-### 3. Cross-browser and physical-device acceptance
+### 2. Cross-browser and physical-device acceptance
 
 - Run 25 WebUSB upload/run cycles per board in Linux Chrome/Chromium and
   Chromebook Chrome; verify UF2 fallback and reconnect behavior.
@@ -123,7 +89,7 @@ data.
   actual Chromebook and Linux desktop.
 - Verify CPX hardware, including infrared, after the unified-site changes.
 
-### 4. Product and operations cleanup
+### 3. Product and operations cleanup
 
 - Finish shared capability APIs and kid-friendly starter projects.
 - Remove remaining unused Maker assets and resolve useful `missing in sim`
@@ -135,7 +101,7 @@ data.
 - Triage inherited npm vulnerabilities deliberately; never use
   `npm audit fix --force` as a blanket upgrade.
 
-### 5. Public v1
+### 4. Public v1
 
 - Seek appropriate upstream/Adafruit review for the unofficial CPB bootloader
   and USB identity use.
@@ -183,6 +149,5 @@ git -C pxt status --short
 git -C pxt-circuit-playground status --short
 ```
 
-If the browser repair is not yet deployed, resume ordered item 1. Otherwise
-resume CPB hardware/runtime acceptance. Never install firmware without a board
+Resume CPB hardware/runtime acceptance. Never install firmware without a board
 present and explicit confirmation of the intended device/recovery path.
