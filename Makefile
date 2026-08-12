@@ -5,7 +5,7 @@ NODE_IMAGE := docker.io/library/node@sha256:673fce836d5a9185da33352682bfedb17c17
 PXT_CONTAINER := podman run --rm -v $(CURDIR):/workspace:Z -w /workspace/pxt-circuit-playground $(NODE_IMAGE)
 PXT_CORE_CONTAINER := podman run --rm -v $(CURDIR):/workspace:Z -w /workspace/pxt $(NODE_IMAGE)
 
-.PHONY: submodules-init submodules-check status pxt-core-install pxt-core-build pxt-install pxt-check pxt-firmware-bounds pxt-static-check pxt-cpb-build static-build static-browser-check static-firefox-check production-browser-check production-firefox-check pxt-serve codal-check codal-build bootloader-check bootloader-build
+.PHONY: submodules-init submodules-check status pxt-core-install pxt-core-build pxt-install pxt-check pxt-firmware-bounds pxt-static-check pxt-cpb-build static-build static-browser-check static-firefox-check production-browser-check production-firefox-check pxt-serve codal-check codal-build bootloader-check bootloader-build udev-check udev-install
 
 submodules-init:
 	git submodule update --init -- $(SUBMODULES)
@@ -45,6 +45,26 @@ status: submodules-check
 	@git -C pxt-circuit-playground status --short --branch
 	@git -C codal-circuit-playground-bluefruit status --short --branch
 	@git -C Adafruit_nRF52_Bootloader status --short --branch
+
+udev-check:
+	@set -eu; \
+		rule=deployment/60-circuit-playground-webusb.rules; \
+		test "$$(grep -c '^SUBSYSTEM=="usb"' "$$rule")" -eq 3; \
+		grep -q 'ATTR{idVendor}=="03eb", ATTR{idProduct}=="2402"' "$$rule"; \
+		grep -q 'ATTR{idVendor}=="239a", ATTR{idProduct}=="0018"' "$$rule"; \
+		grep -q 'ATTR{idVendor}=="239a", ATTR{idProduct}=="0045"' "$$rule"; \
+		! grep -Eq 'MODE:?="0666"|ATTR\{idVendor\}=="(03eb|239a)"[^,]*$$' "$$rule"
+
+udev-install: udev-check
+	install -m 0644 deployment/60-circuit-playground-webusb.rules \
+		/etc/udev/rules.d/60-circuit-playground-webusb.rules
+	udevadm control --reload-rules
+	udevadm trigger --action=add --settle --subsystem-match=usb \
+		--attr-match=idVendor=03eb --attr-match=idProduct=2402
+	udevadm trigger --action=add --settle --subsystem-match=usb \
+		--attr-match=idVendor=239a --attr-match=idProduct=0018
+	udevadm trigger --action=add --settle --subsystem-match=usb \
+		--attr-match=idVendor=239a --attr-match=idProduct=0045
 
 pxt-core-install: submodules-check
 	$(PXT_CORE_CONTAINER) npm ci --ignore-scripts

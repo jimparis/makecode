@@ -99,7 +99,9 @@ The site remains an alpha with `X-Robots-Tag: noindex, nofollow`.
 - Remove remaining unused Maker assets and resolve useful `missing in sim`
   diagnostics where practical.
 - Add the production share directory to normal backups.
-- Install/test narrow Linux udev rules for CPX/CPB WebUSB.
+- Install the validated, product-specific Linux udev rules with
+  `sudo make udev-install`, then test CPX/CPB application and bootloader
+  enumeration plus WebUSB handoff on hardware.
 - Add optional GHCR publication with pinned builders and no PR secrets. GitHub
   Actions now runs read-only, pinned CPX/CPB builds while local reproducibility
   remains the source of truth.

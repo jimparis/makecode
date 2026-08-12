@@ -71,6 +71,21 @@ make pxt-check
 make pxt-serve
 ```
 
+On Linux, direct WebUSB upload also requires permission to open the supported
+boards' USB device nodes. The repository includes a narrow udev policy for the
+CPX application and bootloader and the CPB application/bootloader identities.
+After reviewing it, install it once as root; the invoking user must belong to
+the `plugdev` group:
+
+```sh
+make udev-check
+sudo make udev-install
+```
+
+Unplug and reconnect the board if its existing device node does not acquire
+`plugdev` read/write access after installation. UF2 file download does not
+require WebUSB or this policy.
+
 Submodules are checked out at the parent repository's exact gitlinks. Before
 editing one, switch it to its development branch. Commit and push the child
 first, then stage and commit the new gitlink in this repository. For example:
