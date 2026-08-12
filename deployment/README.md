@@ -50,10 +50,13 @@ container file's `[Install]` section. The resulting service is generated, so
 `generated`. Linger must be enabled for `makecode` so the user manager and
 container start during host boot.
 
-Confirm that the response includes `Permissions-Policy: usb=(self), hid=(self)` and the
-alpha `X-Robots-Tag`, then publish and reopen a disposable project through the
-browser gate. Apache should proxy only to `127.0.0.1:3232`; the container
-itself publishes no non-loopback port.
+Confirm that the response includes exactly one
+`Permissions-Policy: usb=(self), hid=(self)` and exactly one alpha
+`X-Robots-Tag` header, then publish and reopen a disposable project through
+the browser gate. These headers belong to the versioned container. Apache must
+pass them through without adding or replacing either header, so proxy
+configuration cannot drift from the deployed application. Apache should proxy
+only to `127.0.0.1:3232`; the container itself publishes no non-loopback port.
 
 For rollback, retain the preceding content-addressed image and its rendered
 Quadlet. Restore that Quadlet, run `systemctl --user daemon-reload`, and restart

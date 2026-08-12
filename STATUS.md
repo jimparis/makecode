@@ -1,6 +1,6 @@
 # Circuit Playground MakeCode status
 
-Last updated: 2026-08-11
+Last updated: 2026-08-12
 
 This is the operational handoff for the project. Git history contains completed
 work; this file tracks the current state, constraints, blockers, and remaining
@@ -40,8 +40,8 @@ the same origin and must not depend on Microsoft services.
 
 | Repository | Role | Pinned commit |
 | --- | --- | --- |
-| `pxt/` | PXT framework fork | `609000d807d8` |
-| `pxt-circuit-playground/` | target/editor/simulator | `1db6e1c45855` |
+| `pxt/` | PXT framework fork | `1e1db0691b59` |
+| `pxt-circuit-playground/` | target/editor/simulator | `fb741719f311` |
 | `codal-circuit-playground-bluefruit/` | CPB native runtime | `30d62c331ea2` |
 | `Adafruit_nRF52_Bootloader/` | CPB HF2 bootloader | `7836c7cc3d81` |
 
@@ -88,8 +88,11 @@ The site remains an alpha with `X-Robots-Tag: noindex, nofollow`.
 
 ### 2. Cross-browser and physical-device acceptance
 
-- Finish Linux HID permission installation, grant the stock CPX bootloader once
-  in Chromium, and confirm 25 direct upload/run cycles with no UF2 fallback.
+- Deploy the built-in desktop-Linux USB setup dialog, remove Apache's duplicate
+  application-owned response headers, and install the product-specific udev
+  rule on `psychosis`.
+- Grant the stock CPX bootloader once in Chromium, then confirm 25 direct
+  upload/run cycles with no unexpected UF2 fallback.
 - Run 25 direct upload/run cycles per board in Linux Chrome/Chromium and
   Chromebook Chrome; verify retry, explicit UF2 fallback, and reconnect behavior.
 - Manually confirm Firefox persistence, simulator, export/import, and UF2.
@@ -103,9 +106,6 @@ The site remains an alpha with `X-Robots-Tag: noindex, nofollow`.
 - Remove remaining unused Maker assets and resolve useful `missing in sim`
   diagnostics where practical.
 - Add the production share directory to normal backups.
-- Install the validated, product-specific Linux udev rules with
-  `sudo make udev-install`, then test CPX/CPB application and bootloader
-  enumeration plus WebUSB/WebHID handoff on hardware.
 - Add optional GHCR publication with pinned builders and no PR secrets. GitHub
   Actions now runs read-only, pinned CPX/CPB builds while local reproducibility
   remains the source of truth.
@@ -130,6 +130,9 @@ The site remains an alpha with `X-Robots-Tag: noindex, nofollow`.
   high-resolution Arcade displays are outside v1.
 - Current npm audit reports inherited vulnerabilities; controlled dependency
   upgrades are future work.
+- Apache currently duplicates the container-owned `Permissions-Policy` and
+  `X-Robots-Tag` response headers; remove its two `Header always set` directives
+  and reload it before the next production browser gate.
 - The Chromium production stress gate can expose an inherited Monaco
   cancellation during rapid editor teardown; the same production package
   passes the complete local gate with zero external requests or console errors.

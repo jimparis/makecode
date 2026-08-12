@@ -1,5 +1,6 @@
 PXT_DIR := $(CURDIR)/pxt-circuit-playground
 PXT_CORE_DIR := $(CURDIR)/pxt
+UDEV_RULES := $(PXT_DIR)/docs/static/60-circuit-playground-webusb.rules
 SUBMODULES := pxt pxt-circuit-playground codal-circuit-playground-bluefruit Adafruit_nRF52_Bootloader
 NODE_IMAGE := docker.io/library/node@sha256:673fce836d5a9185da33352682bfedb17c174d016370d08616748dff76fda862
 PXT_CONTAINER := podman run --rm -v $(CURDIR):/workspace:Z -w /workspace/pxt-circuit-playground $(NODE_IMAGE)
@@ -47,10 +48,10 @@ status: submodules-check
 	@git -C Adafruit_nRF52_Bootloader status --short --branch
 
 udev-check:
-	udevadm verify deployment/60-circuit-playground-webusb.rules
+	udevadm verify $(UDEV_RULES)
 
 udev-install: udev-check
-	install -m 0644 deployment/60-circuit-playground-webusb.rules \
+	install -m 0644 $(UDEV_RULES) \
 		/etc/udev/rules.d/60-circuit-playground-webusb.rules
 	udevadm control --reload-rules
 	udevadm trigger --action=add --settle --subsystem-match=usb \

@@ -3,6 +3,8 @@
 "use strict";
 
 const fs = require("fs");
+const http = require("http");
+const https = require("https");
 const os = require("os");
 const path = require("path");
 const { spawnSync } = require("child_process");
@@ -42,6 +44,42 @@ function browserPath(browserName) {
 
 function delay(milliseconds) {
     return new Promise(resolve => setTimeout(resolve, milliseconds));
+}
+
+function readResponseHeaders(url) {
+    return new Promise((resolve, reject) => {
+        const client = url.startsWith("https:") ? https : http;
+        const request = client.request(url, { method: "HEAD" }, response => {
+            response.resume();
+            response.on("end", () => resolve(response.rawHeaders));
+        });
+        request.on("error", reject);
+        request.end();
+    });
+}
+
+async function waitForResponseHeaders(url, timeout = 30000) {
+    const deadline = Date.now() + timeout;
+    let lastError;
+    while (Date.now() < deadline) {
+        try {
+            return await readResponseHeaders(url);
+        } catch (error) {
+            lastError = error;
+            await delay(100);
+        }
+    }
+    fail(`origin did not become ready: ${lastError?.message || "timed out"}`);
+}
+
+function headerValues(rawHeaders, name) {
+    const values = [];
+    for (let index = 0; index < rawHeaders.length; index += 2) {
+        if (rawHeaders[index].toLowerCase() === name.toLowerCase()) {
+            values.push(rawHeaders[index + 1]);
+        }
+    }
+    return values;
 }
 
 async function waitForDownload(directory, extension, timeout = 120000) {
@@ -909,6 +947,14 @@ async function main() {
             if (!portMatch) fail(`could not parse published browser-test port: ${binding}`);
             origin = `http://127.0.0.1:${portMatch[1]}`;
         }
+        const rawHeaders = await waitForResponseHeaders(`${origin}/`);
+        const permissionPolicies = headerValues(rawHeaders, "Permissions-Policy");
+        const robotsHeaders = headerValues(rawHeaders, "X-Robots-Tag");
+        assert(permissionPolicies.length === 1 &&
+            permissionPolicies[0] === "usb=(self), hid=(self)",
+        `origin must return exactly one container-owned Permissions-Policy header: ${JSON.stringify(permissionPolicies)}`);
+        assert(robotsHeaders.length === 1 && robotsHeaders[0] === "noindex, nofollow",
+            `origin must return exactly one container-owned X-Robots-Tag header: ${JSON.stringify(robotsHeaders)}`);
         const originHostname = new URL(origin).hostname;
 
         browser = await puppeteer.launch({
@@ -1117,6 +1163,44 @@ async function main() {
         "editor did not start with the standard dark theme");
         await auditToolboxContrast(page, "standard CPB theme");
         await checkExtensionsBrowser(page);
+
+        if (browserName !== "firefox") {
+            await clickVisible(page, ".hw-button");
+            await page.waitForFunction(() => [...document.querySelectorAll("[role=menuitem]")]
+                .some(element => element.innerText.trim() === "Linux USB setup" &&
+                    element.getBoundingClientRect().width > 0), { timeout: 30000 });
+            await page.evaluate(() => {
+                const item = [...document.querySelectorAll("[role=menuitem]")]
+                    .find(element => element.innerText.trim() === "Linux USB setup" &&
+                        element.getBoundingClientRect().width > 0);
+                if (!item) throw new Error("Linux USB setup menu item is missing");
+                item.click();
+            });
+            await page.waitForFunction(() => {
+                const dialog = document.querySelector("[role=dialog]");
+                return dialog?.innerText.includes("Desktop Linux normally requires") &&
+                    dialog.innerText.includes("60-circuit-playground-webusb.rules");
+            }, { timeout: 30000 });
+            await page.evaluate(() => {
+                const button = [...document.querySelectorAll("[role=dialog] button")]
+                    .find(element => element.innerText.trim() === "Download Linux rules");
+                if (!button) throw new Error("Download Linux rules button is missing");
+                button.click();
+            });
+            const downloadedRules = await waitForDownload(downloadDirectory, ".rules");
+            const expectedRules = fs.readFileSync(path.join(
+                workspace, "pxt-circuit-playground", "docs", "static",
+                "60-circuit-playground-webusb.rules"), "utf8");
+            assert(fs.readFileSync(downloadedRules, "utf8") === expectedRules,
+                "downloaded Linux rules differ from the versioned target asset");
+            await page.evaluate(() => {
+                const button = [...document.querySelectorAll("[role=dialog] button")]
+                    .find(element => element.innerText.trim() === "Close");
+                if (!button) throw new Error("Linux USB setup Close button is missing");
+                button.click();
+            });
+            await page.waitForSelector("[role=dialog]", { hidden: true, timeout: 30000 });
+        }
 
         await clickVisible(page, ".javascript-menuitem");
         await page.waitForFunction(() => window.monaco && monaco.editor.getModels()
