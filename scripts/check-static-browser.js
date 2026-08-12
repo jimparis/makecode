@@ -1004,6 +1004,21 @@ async function main() {
             ]
         });
         const page = await browser.newPage();
+        if (browserName !== "firefox") {
+            await page.evaluateOnNewDocument(() => {
+                if (navigator.hid) return;
+                const testHid = {
+                    addEventListener: () => { },
+                    removeEventListener: () => { },
+                    getDevices: async () => [],
+                    requestDevice: async () => [],
+                };
+                Object.defineProperty(navigator, "hid", {
+                    configurable: true,
+                    value: testHid,
+                });
+            });
+        }
         page.__apiRequests = [];
         page.__apiResponses = [];
         const externalRequests = new Set();
@@ -1184,9 +1199,18 @@ async function main() {
         await checkExtensionsBrowser(page);
 
         if (browserName !== "firefox") {
-            const primaryText = await page.$eval(".download-button", element => element.innerText.trim());
+            const primaryState = await page.evaluate(() => ({
+                text: document.querySelector(".download-button")?.innerText.trim(),
+                hid: !!navigator.hid,
+                usb: !!navigator.usb,
+                usbEnabled: pxt.usb.isEnabled,
+                hasHidFilters: typeof pxt.usb.hasHIDFilters === "function" && pxt.usb.hasHIDFilters(),
+                hwVariant: pxt.getActiveHwVariant(),
+                appTargetVariant: pxt.appTargetVariant,
+            }));
+            const primaryText = primaryState.text;
             assert(primaryText === "Connect Device",
-                `unpaired Chromium primary action is ${JSON.stringify(primaryText)} instead of Connect Device`);
+                `unpaired Chromium primary action is not Connect Device: ${JSON.stringify(primaryState)}`);
             await clickVisible(page, ".download-button");
             await page.waitForFunction(() => {
                 const text = document.querySelector("[role=dialog]")?.innerText || "";
@@ -1222,6 +1246,11 @@ async function main() {
             }, { timeout: 30000 });
             await clickVisibleText(page, "[role=dialog] button", "Done");
             await page.waitForSelector("[role=dialog]", { hidden: true, timeout: 30000 });
+        }
+        else {
+            const primaryText = await page.$eval(".download-button", element => element.innerText.trim());
+            assert(primaryText === "Download File",
+                `Firefox primary action is ${JSON.stringify(primaryText)} instead of Download File`);
         }
 
         await clickVisible(page, ".javascript-menuitem");

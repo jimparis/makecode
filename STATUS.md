@@ -40,7 +40,7 @@ the same origin and must not depend on Microsoft services.
 
 | Repository | Role | Pinned commit |
 | --- | --- | --- |
-| `pxt/` | PXT framework fork | `4880d9b7b420` |
+| `pxt/` | PXT framework fork | `6c78ac1c1dba` |
 | `pxt-circuit-playground/` | target/editor/simulator | `8eb3fb0044f7` |
 | `codal-circuit-playground-bluefruit/` | CPB native runtime | `30d62c331ea2` |
 | `Adafruit_nRF52_Bootloader/` | CPB HF2 bootloader | `7836c7cc3d81` |
