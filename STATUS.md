@@ -43,7 +43,7 @@ the same origin and must not depend on Microsoft services.
 | `pxt/` | PXT framework fork | `f196b2348a27` |
 | `pxt-circuit-playground/` | target/editor/simulator | `718f1b240307` |
 | `codal-circuit-playground-bluefruit/` | CPB native runtime | `30d62c331ea2` |
-| `Adafruit_nRF52_Bootloader/` | CPB HF2 bootloader | `7836c7cc3d81` |
+| `Adafruit_nRF52_Bootloader/` | CPB HF2 bootloader | `e7b48c5467de` |
 
 The parent gitlinks are the source of truth for this combination. All have
 public `jimparis/*` origins; initialized children retain `upstream`. Use
@@ -77,6 +77,10 @@ The site remains an alpha with `X-Robots-Tag: noindex, nofollow`.
 
 ### 1. CPB hardware/runtime acceptance
 
+- A same-board UF2 updater now builds reproducibly from the pinned HF2
+  bootloader source and is validated for family, board ID, address bounds,
+  vectors, UICR, completeness, and negative mutations. Package it with the
+  site and document the one-time update before installing it on hardware.
 - Install and test the unofficial HF2-capable CPB bootloader; retain UF2, USB
   DFU, and recovery paths.
 - Validate application-to-bootloader handoff, WebUSB reconnect, bounded flash

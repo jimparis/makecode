@@ -75,26 +75,126 @@ function intelHexAddresses(filename) {
     return addresses;
 }
 
-function validateUpdateUf2(filename) {
-    const image = fs.readFileSync(filename);
-    if (!image.length || image.length % 512) fail("bootloader update is not a complete UF2 file");
+function validateUpdateUf2Image(image, label) {
+    if (!image.length || image.length % 512) fail(`${label} is not a complete UF2 file`);
+    const blockCount = image.length / 512;
+    const blockNumbers = new Set();
+    const targets = new Map();
+    let declaredBlockCount;
     for (let offset = 0; offset < image.length; offset += 512) {
         const start0 = image.readUInt32LE(offset);
         const start1 = image.readUInt32LE(offset + 4);
         const flags = image.readUInt32LE(offset + 8);
         const target = image.readUInt32LE(offset + 12);
         const payload = image.readUInt32LE(offset + 16);
+        const blockNumber = image.readUInt32LE(offset + 20);
+        const totalBlocks = image.readUInt32LE(offset + 24);
         const family = image.readUInt32LE(offset + 28);
         const end = image.readUInt32LE(offset + 508);
         if (start0 !== 0x0a324655 || start1 !== 0x9e5d5157 || end !== 0x0ab16f30 ||
-            !(flags & 0x2000) || payload !== 256 || family !== 0xd663823c) {
-            fail(`invalid bootloader UF2 block at offset ${offset}`);
+            flags !== 0x2000 || payload !== 256 || family !== 0xd663823c || (target & 0xff)) {
+            fail(`invalid ${label} block at offset ${offset}`);
         }
-        const allowed = target < 0x1000 ||
+        const allowed = target < 0x1000 && target + payload <= 0x1000 ||
             (target >= 0xf4000 && target < 0xfe000) ||
             target === 0x10001000;
-        if (!allowed) fail(`bootloader updater targets unsafe address 0x${target.toString(16)}`);
+        if (!allowed) fail(`${label} targets unsafe address 0x${target.toString(16)}`);
+        if (blockNumber >= blockCount || blockNumbers.has(blockNumber)) {
+            fail(`${label} has an invalid or duplicate block number ${blockNumber}`);
+        }
+        if (declaredBlockCount === undefined) declaredBlockCount = totalBlocks;
+        if (totalBlocks !== declaredBlockCount || targets.has(target)) {
+            fail(`${label} has inconsistent counts or duplicate address 0x${target.toString(16)}`);
+        }
+        blockNumbers.add(blockNumber);
+        targets.set(target, image.subarray(offset + 32, offset + 32 + payload));
     }
+    if (declaredBlockCount !== blockCount || blockNumbers.size !== blockCount) {
+        fail(`${label} is incomplete (${blockNumbers.size}/${declaredBlockCount} blocks)`);
+    }
+    for (let blockNumber = 0; blockNumber < blockCount; blockNumber++) {
+        if (!blockNumbers.has(blockNumber)) fail(`${label} is missing block ${blockNumber}`);
+    }
+
+    const vector = targets.get(0xf4000);
+    if (!vector) fail(`${label} has no bootloader vector table`);
+    const initialStack = vector.readUInt32LE(0);
+    const resetVector = vector.readUInt32LE(4);
+    if (initialStack < 0x20000000 || initialStack > 0x20040000 || (initialStack & 3) ||
+        !(resetVector & 1) || resetVector < 0xf4000 || resetVector >= 0xfe000) {
+        fail(`${label} has an invalid bootloader vector table`);
+    }
+
+    const uicr = targets.get(0x10001000);
+    if (!uicr || uicr.readUInt32LE(0x14) !== 0xf4000 ||
+        uicr.readUInt32LE(0x18) !== 0xfe000) {
+        fail(`${label} has incompatible UICR bootloader addresses`);
+    }
+
+    const config = targets.get(0xfd800);
+    if (!config || config.readUInt32LE(0) !== 0x1e9e10f1 ||
+        config.readUInt32LE(4) !== 0x20227a79) {
+        fail(`${label} has no Circuit Playground bootloader configuration`);
+    }
+    const usedEntries = config.readUInt32LE(8);
+    const totalEntries = config.readUInt32LE(12);
+    if (!usedEntries || usedEntries > totalEntries || 16 + usedEntries * 8 > config.length) {
+        fail(`${label} has an invalid bootloader configuration table`);
+    }
+    let boardId;
+    for (let entry = 0; entry < usedEntries; entry++) {
+        const offset = 16 + entry * 8;
+        if (config.readUInt32LE(offset) === 208) boardId = config.readUInt32LE(offset + 4);
+    }
+    if (boardId !== 0x239a0045) {
+        fail(`${label} is not locked to Circuit Playground Bluefruit USB ID 0x239a0045`);
+    }
+
+    const sortedTargets = [...targets.keys()].sort((left, right) => left - right);
+    const ranges = [];
+    let rangeStart = sortedTargets[0];
+    let previous = rangeStart;
+    for (const target of sortedTargets.slice(1)) {
+        if (target !== previous + 256) {
+            ranges.push([rangeStart, previous + 256]);
+            rangeStart = target;
+        }
+        previous = target;
+    }
+    ranges.push([rangeStart, previous + 256]);
+
+    return {
+        updateUf2Bytes: image.length,
+        updateUf2Blocks: blockCount,
+        updateUf2Family: "0xd663823c",
+        updateUf2BoardId: "0x239a0045",
+        updateUf2TargetRanges: ranges.map(([start, end]) =>
+            `0x${start.toString(16)}..<0x${end.toString(16)}`),
+        updateUf2MinimumExistingBootloader: "0.4.0",
+        updateUf2PreservesSoftDevice: true,
+        updateUf2MayOverwriteApplication: true
+    };
+}
+
+function validateUpdateUf2(filename) {
+    const image = fs.readFileSync(filename);
+    const contract = validateUpdateUf2Image(image, "bootloader updater");
+    const mutations = [
+        ["wrong family", 28, 0xada52840],
+        ["application address", 12, 0x26000]
+    ];
+    for (const [name, offset, value] of mutations) {
+        const mutated = Buffer.from(image);
+        mutated.writeUInt32LE(value, offset);
+        let rejected = false;
+        try {
+            validateUpdateUf2Image(mutated, `mutated updater (${name})`);
+        } catch (error) {
+            rejected = true;
+        }
+        if (!rejected) fail(`bootloader updater accepted ${name} mutation`);
+    }
+    return contract;
 }
 
 function validateCpbBuild(buildDir) {
@@ -174,7 +274,7 @@ for (const board of boards) {
 
 const cpbBuild = buildDirs.get("circuitplayground_nrf52840");
 const contract = validateCpbBuild(cpbBuild);
-validateUpdateUf2(path.join(cpbBuild, "bootloader_mbr.uf2"));
+const updateContract = validateUpdateUf2(path.join(cpbBuild, "bootloader_mbr.uf2"));
 fs.mkdirSync(artifactDir, { recursive: true });
 
 const recoveryHex = path.join(artifactDir, "circuitplayground_nrf52840-recovery-s140-6.1.1.hex");
@@ -195,7 +295,7 @@ for (const required of [0, 0xf4000, 0x10001014, 0x10001018]) {
 const outputs = [
     [path.join(cpbBuild, "bootloader.elf"), "circuitplayground_nrf52840-bootloader.elf"],
     [path.join(cpbBuild, "bootloader.hex"), "circuitplayground_nrf52840-bootloader.hex"],
-    [path.join(cpbBuild, "bootloader_mbr.uf2"), "circuitplayground_nrf52840-bootloader-update.uf2"],
+    [path.join(cpbBuild, "bootloader_mbr.uf2"), "update-circuitplayground_nrf52840_bootloader-makecode-hf2-nosd.uf2"],
     [recoveryHex, path.basename(recoveryHex)]
 ];
 for (const [source, name] of outputs) {
@@ -216,7 +316,8 @@ fs.writeFileSync(path.join(artifactDir, "BUILD-METADATA.json"), `${JSON.stringif
     cmake: capture("cmake", ["--version"]).split("\n")[0],
     compiler: capture("arm-none-eabi-gcc", ["--version"]).split("\n")[0],
     regressionBoards: boards.slice(1),
-    ...contract
+    ...contract,
+    ...updateContract
 }, null, 4)}\n`);
 
 console.log(`CPB bootloader artifacts written to ${artifactDir}`);
