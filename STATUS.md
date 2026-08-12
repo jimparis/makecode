@@ -65,7 +65,7 @@ secret scan.
   consistent fallback artwork, installed-package visibility, and removal;
 - WebUSB-based direct transfer with no WebHID pairing dependency;
 - one modern connection-dialog flow shared by CPX and CPB; board selection
-  supplies the hardware-specific name, firmware help, simulator, and UF2;
+  supplies the hardware-specific name, runtime, simulator, and UF2;
 - a deliberate `...` menu ordered as `Choose Hardware`, `Download as File`,
   and `Connect Device` / `Connect New Device`;
 - guided `Connect Device` / `Send to Board` actions, retry/manual-download/
