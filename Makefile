@@ -59,6 +59,7 @@ udev-install: udev-check
 		--attr-match=idVendor=239a --attr-match=idProduct=0018
 	udevadm trigger --action=add --settle --subsystem-match=usb \
 		--attr-match=idVendor=239a --attr-match=idProduct=0045
+	udevadm trigger --action=add --settle --subsystem-match=hidraw
 
 pxt-core-install: submodules-check
 	$(PXT_CORE_CONTAINER) npm ci --ignore-scripts

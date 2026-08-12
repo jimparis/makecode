@@ -5,6 +5,8 @@
 # Circuit Playground Express application and UF2 bootloader
 SUBSYSTEM=="usb", ENV{DEVTYPE}=="usb_device", ATTR{idVendor}=="03eb", ATTR{idProduct}=="2402", MODE:="0660", GROUP:="plugdev"
 SUBSYSTEM=="usb", ENV{DEVTYPE}=="usb_device", ATTR{idVendor}=="239a", ATTR{idProduct}=="0018", MODE:="0660", GROUP:="plugdev"
+SUBSYSTEM=="hidraw", ATTRS{idVendor}=="239a", ATTRS{idProduct}=="0018", MODE:="0660", GROUP:="plugdev"
 
 # Circuit Playground Bluefruit application and HF2/UF2 bootloader
 SUBSYSTEM=="usb", ENV{DEVTYPE}=="usb_device", ATTR{idVendor}=="239a", ATTR{idProduct}=="0045", MODE:="0660", GROUP:="plugdev"
+SUBSYSTEM=="hidraw", ATTRS{idVendor}=="239a", ATTRS{idProduct}=="0045", MODE:="0660", GROUP:="plugdev"
