@@ -1216,7 +1216,8 @@ async function main() {
             await clickVisible(page, ".download-button");
             try {
                 await page.waitForFunction(() => {
-                    const dialog = document.querySelector("[role=dialog]");
+                    const dialog = [...document.querySelectorAll("[role=dialog]")]
+                        .find(element => element.innerText.includes("Connect your Circuit Playground Bluefruit"));
                     const text = dialog?.innerText || "";
                     return text.includes("Connect your Circuit Playground Bluefruit") &&
                         text.includes("Connect Circuit Playground Bluefruit to your computer with a USB cable") &&
@@ -1380,15 +1381,33 @@ async function main() {
         assert(cpxState.source.includes(marker), "board switch did not preserve JavaScript source");
         if (browserName !== "firefox") {
             await clickVisible(page, ".download-button");
-            await page.waitForFunction(() => {
-                const dialog = document.querySelector("[role=dialog]");
-                const text = dialog?.innerText || "";
-                return text.includes("Connect your Circuit Playground Express") &&
-                    text.includes("Connect Circuit Playground Express to your computer with a USB cable") &&
-                    !!pxt.appTarget.appTheme.downloadDialogTheme &&
-                    !!dialog.querySelector(".download-dialog") &&
-                    !dialog.querySelector(".stackable");
-            }, { timeout: 30000 });
+            try {
+                await page.waitForFunction(() => {
+                    const dialog = [...document.querySelectorAll("[role=dialog]")]
+                        .find(element => element.innerText.includes("Connect your Circuit Playground Express"));
+                    const text = dialog?.innerText || "";
+                    return text.includes("Connect your Circuit Playground Express") &&
+                        text.includes("Connect Circuit Playground Express to your computer with a USB cable") &&
+                        !!pxt.appTarget.appTheme.downloadDialogTheme &&
+                        !!dialog.querySelector(".download-dialog") &&
+                        !dialog.querySelector(".stackable");
+                }, { timeout: 30000 });
+            } catch (error) {
+                const state = await page.evaluate(() => ({
+                    dialogs: [...document.querySelectorAll("[role=dialog]")]
+                        .map(element => element.innerText),
+                    dialogHtml: [...document.querySelectorAll("[role=dialog]")]
+                        .find(element => element.innerText.includes("Connect your Circuit Playground Express"))
+                        ?.innerHTML,
+                    downloadText: document.querySelector(".download-button")?.innerText.trim(),
+                    connected: pxt.packetio.isConnected(),
+                    connecting: pxt.packetio.isConnecting(),
+                    hwName: pxt.hwName,
+                    activeVariant: pxt.getActiveHwVariant(),
+                    downloadDialogTheme: pxt.appTarget.appTheme.downloadDialogTheme,
+                }));
+                throw new Error(`CPX modern connect dialog did not appear: ${JSON.stringify(state)}; ${error}`);
+            }
             await clickVisible(page, '[role=dialog] [aria-label="Close"]');
             await page.waitForSelector("[role=dialog]", { hidden: true, timeout: 30000 });
         }
