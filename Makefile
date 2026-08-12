@@ -47,13 +47,7 @@ status: submodules-check
 	@git -C Adafruit_nRF52_Bootloader status --short --branch
 
 udev-check:
-	@set -eu; \
-		rule=deployment/60-circuit-playground-webusb.rules; \
-		test "$$(grep -c '^SUBSYSTEM=="usb"' "$$rule")" -eq 3; \
-		grep -q 'ATTR{idVendor}=="03eb", ATTR{idProduct}=="2402"' "$$rule"; \
-		grep -q 'ATTR{idVendor}=="239a", ATTR{idProduct}=="0018"' "$$rule"; \
-		grep -q 'ATTR{idVendor}=="239a", ATTR{idProduct}=="0045"' "$$rule"; \
-		! grep -Eq 'MODE:?="0666"|ATTR\{idVendor\}=="(03eb|239a)"[^,]*$$' "$$rule"
+	udevadm verify deployment/60-circuit-playground-webusb.rules
 
 udev-install: udev-check
 	install -m 0644 deployment/60-circuit-playground-webusb.rules \
