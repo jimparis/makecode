@@ -22,9 +22,10 @@ func testApp(t *testing.T) *app {
 		t.Fatal(err)
 	}
 	for name, content := range map[string]string{
-		"index.html":            "editor shell",
-		"docs/boards.html":      "<h1>Boards</h1>",
-		"docs/static/board.jpg": "jpeg",
+		"index.html":                       "editor shell",
+		"docs/boards.html":                 "<h1>Boards</h1>",
+		"docs/static/board.jpg":            "jpeg",
+		"docs/static/firmware/updater.uf2": "uf2",
 	} {
 		filename := filepath.Join(site, name)
 		if err := os.MkdirAll(filepath.Dir(filename), 0755); err != nil {
@@ -150,6 +151,12 @@ func TestStaticRoutesAndHeaders(t *testing.T) {
 	missing := request(t, application, http.MethodGet, "/static/missing.png", nil)
 	if missing.Code != http.StatusNotFound {
 		t.Fatalf("missing static status %d", missing.Code)
+	}
+	updater := request(t, application, http.MethodGet, "/static/firmware/updater.uf2", nil)
+	if updater.Code != http.StatusOK || updater.Header().Get("Content-Type") != "application/octet-stream" ||
+		updater.Header().Get("Content-Disposition") != `attachment; filename="updater.uf2"` {
+		t.Fatalf("updater headers: status %d type %q disposition %q", updater.Code,
+			updater.Header().Get("Content-Type"), updater.Header().Get("Content-Disposition"))
 	}
 	missingFirmware := request(t, application, http.MethodGet,
 		"/hexcache/7189a7a6e36e83b8f9c1d8a6bd09e8b0ff6cf19623de607753b3357dd232845e.hex", nil)

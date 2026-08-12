@@ -85,7 +85,7 @@ pxt-static-check: submodules-check
 pxt-cpb-build: codal-check
 	node scripts/build-pxt-cpb.js
 
-static-build: pxt-check
+static-build: pxt-check bootloader-build
 	node scripts/build-static.js
 	node scripts/check-static-browser.js
 

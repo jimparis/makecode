@@ -471,7 +471,10 @@ func (a *app) safeSiteFile(relative string) (string, bool) {
 }
 
 func serveFile(response http.ResponseWriter, request *http.Request, filename string, info os.FileInfo) {
-	if contentType := mime.TypeByExtension(filepath.Ext(filename)); contentType != "" {
+	if filepath.Ext(filename) == ".uf2" {
+		response.Header().Set("Content-Type", "application/octet-stream")
+		response.Header().Set("Content-Disposition", fmt.Sprintf("attachment; filename=%q", info.Name()))
+	} else if contentType := mime.TypeByExtension(filepath.Ext(filename)); contentType != "" {
 		response.Header().Set("Content-Type", contentType)
 	}
 	file, err := os.Open(filename)

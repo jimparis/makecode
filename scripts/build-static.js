@@ -10,6 +10,10 @@ const { spawnSync } = require("child_process");
 const workspace = path.resolve(__dirname, "..");
 const pxtDir = path.join(workspace, "pxt-circuit-playground");
 const pxtCoreDir = path.join(workspace, "pxt");
+const bootloaderDir = path.join(workspace, "Adafruit_nRF52_Bootloader");
+const bootloaderArtifactDir = path.join(workspace, "artifacts", "bootloader");
+const cpbUpdaterName = "update-circuitplayground_nrf52840_bootloader-makecode-hf2-nosd.uf2";
+const cpbUpdaterSource = path.join(bootloaderArtifactDir, cpbUpdaterName);
 const generatedSite = path.join(pxtDir, "built", "static-release");
 const outputDir = path.join(workspace, "artifacts", ".static-staging");
 const finalOutputDir = path.join(workspace, "artifacts", "static");
@@ -47,6 +51,16 @@ function capture(command, args, options = {}) {
 
 function sha256(filename) {
     return crypto.createHash("sha256").update(fs.readFileSync(filename)).digest("hex");
+}
+
+function checksumManifest(filename) {
+    const result = new Map();
+    for (const line of fs.readFileSync(filename, "utf8").trim().split("\n")) {
+        const match = /^([0-9a-f]{64})  (.+)$/.exec(line);
+        if (!match || result.has(match[2])) fail(`invalid checksum manifest line: ${line}`);
+        result.set(match[2], match[1]);
+    }
+    return result;
 }
 
 function filesBelow(directory, relative = "") {
@@ -96,11 +110,32 @@ if (previousManifest) {
 }
 const pxtCommit = capture("git", ["-C", pxtDir, "rev-parse", "HEAD"]);
 const pxtCoreCommit = capture("git", ["-C", pxtCoreDir, "rev-parse", "HEAD"]);
+const bootloaderCommit = capture("git", ["-C", bootloaderDir, "rev-parse", "HEAD"]);
 const sourceDateEpoch = capture("git", ["-C", pxtDir, "show", "-s", "--format=%ct", "HEAD"]);
 const pxtSourceDigest = gitTreeDigest(pxtDir);
 const pxtCoreSourceDigest = gitTreeDigest(pxtCoreDir);
+const bootloaderSourceDigest = gitTreeDigest(bootloaderDir);
+const bootloaderMetadataPath = path.join(bootloaderArtifactDir, "BUILD-METADATA.json");
+const bootloaderChecksumsPath = path.join(bootloaderArtifactDir, "SHA256SUMS");
+for (const filename of [cpbUpdaterSource, bootloaderMetadataPath, bootloaderChecksumsPath]) {
+    if (!fs.existsSync(filename)) fail(`missing bootloader build artifact: ${filename}`);
+}
+const bootloaderMetadata = JSON.parse(fs.readFileSync(bootloaderMetadataPath, "utf8"));
+const bootloaderChecksums = checksumManifest(bootloaderChecksumsPath);
+const cpbUpdaterSha256 = sha256(cpbUpdaterSource);
+if (bootloaderMetadata.sourceCommit !== bootloaderCommit || bootloaderMetadata.sourceDirty ||
+    bootloaderMetadata.updateUf2Family !== "0xd663823c" ||
+    bootloaderMetadata.updateUf2BoardId !== "0x239a0045" ||
+    bootloaderMetadata.updateUf2MinimumExistingBootloader !== "0.4.0" ||
+    bootloaderMetadata.updateUf2PreservesSoftDevice !== true ||
+    bootloaderMetadata.updateUf2MayOverwriteApplication !== true ||
+    bootloaderMetadata.updateUf2Bytes !== fs.statSync(cpbUpdaterSource).size ||
+    bootloaderChecksums.get(cpbUpdaterName) !== cpbUpdaterSha256) {
+    fail("CPB bootloader updater does not match its pinned, validated build metadata");
+}
 const releaseBuilderDigest = crypto.createHash("sha256")
     .update(fs.readFileSync(__filename))
+    .update(fs.readFileSync(path.join(workspace, "scripts", "build-bootloader.js")))
     .update(fs.readFileSync(path.join(workspace, "deployment", "Containerfile")))
     .update(fs.readFileSync(path.join(workspace, "deployment", "circuit-playground-makecode.container.in")))
     .update(fs.readFileSync(path.join(workspace, "deployment", "server", "go.mod")))
@@ -109,6 +144,8 @@ const releaseBuilderDigest = crypto.createHash("sha256")
 const serviceWorkerReleaseId = crypto.createHash("sha256")
     .update(pxtSourceDigest)
     .update(pxtCoreSourceDigest)
+    .update(bootloaderSourceDigest)
+    .update(cpbUpdaterSha256)
     .update(releaseBuilderDigest)
     .digest("hex");
 fs.rmSync(generatedSite, { recursive: true, force: true });
@@ -125,6 +162,9 @@ run("podman", [
 ]);
 
 fs.cpSync(generatedSite, siteDir, { recursive: true });
+const firmwareDir = path.join(siteDir, "docs", "static", "firmware");
+fs.mkdirSync(firmwareDir, { recursive: true });
+fs.copyFileSync(cpbUpdaterSource, path.join(firmwareDir, cpbUpdaterName));
 const releaseManifest = path.join(siteDir, "release.manifest");
 const releaseContents = fs.readFileSync(releaseManifest, "utf8")
     .replace(/^# ver .*$/m, `# ver SOURCE_DATE_EPOCH ${sourceDateEpoch}`);
@@ -143,9 +183,11 @@ const releaseVersion = process.env.RELEASE_VERSION ||
 if (!/^[A-Za-z0-9][A-Za-z0-9_.-]{0,127}$/.test(releaseVersion)) {
     fail(`invalid release version: ${releaseVersion}`);
 }
-const sameReleaseInputs = previousMetadata.reproducibleManifestVersion === 2 &&
+const sameReleaseInputs = previousMetadata.reproducibleManifestVersion === 3 &&
     previousMetadata.pxtSourceDigest === pxtSourceDigest &&
     previousMetadata.pxtCoreSourceDigest === pxtCoreSourceDigest &&
+    previousMetadata.bootloaderSourceDigest === bootloaderSourceDigest &&
+    previousMetadata.cpbUpdaterSha256 === cpbUpdaterSha256 &&
     previousMetadata.releaseBuilderDigest === releaseBuilderDigest;
 if (sameReleaseInputs && previousManifest && previousManifest !== manifest) {
     const parse = value => new Map(value.trim().split("\n").filter(Boolean)
@@ -240,6 +282,10 @@ try {
     const boardImageHeaders = capture("curl", [
         "-fsSI", `${url}static/libs/adafruit-circuit-playground-bluefruit.jpg`
     ]);
+    const updaterUrl = `${url}static/firmware/${cpbUpdaterName}`;
+    const updaterHeaders = capture("curl", ["-fsSI", updaterUrl]);
+    const servedUpdater = path.join(outputDir, "served-cpb-updater.uf2");
+    run("curl", ["-fsS", "-o", servedUpdater, updaterUrl]);
     const boardsBody = capture("curl", ["-fsS", `${url}boards`]);
     const missingStaticStatus = capture("curl", [
         "-sS", "-o", "/dev/null", "-w", "%{http_code}", `${url}static/does-not-exist.png`
@@ -254,6 +300,12 @@ try {
     if (!/^content-type:\s*image\/jpeg\s*$/im.test(boardImageHeaders)) {
         fail("static container did not serve /static board artwork as an image");
     }
+    if (!/^content-type:\s*application\/octet-stream\s*$/im.test(updaterHeaders) ||
+        !new RegExp(`^content-disposition:\\s*attachment; filename="${cpbUpdaterName}"\\s*$`, "im")
+            .test(updaterHeaders) || sha256(servedUpdater) !== cpbUpdaterSha256) {
+        fail("static container did not serve the validated CPB updater as an exact download");
+    }
+    fs.rmSync(servedUpdater);
     if (!/<h1>Boards<\/h1>/.test(boardsBody)) {
         fail("static container did not resolve the clean /boards documentation route");
     }
@@ -302,14 +354,19 @@ try {
 }
 
 fs.writeFileSync(path.join(outputDir, "BUILD-METADATA.json"), `${JSON.stringify({
-    reproducibleManifestVersion: 2,
+    reproducibleManifestVersion: 3,
     reproducibleOciArchiveVersion: 2,
     pxtCommit,
     pxtCoreCommit,
+    bootloaderCommit,
     pxtDirty: capture("git", ["-C", pxtDir, "status", "--porcelain"]).length > 0,
     pxtCoreDirty: capture("git", ["-C", pxtCoreDir, "status", "--porcelain"]).length > 0,
+    bootloaderDirty: capture("git", ["-C", bootloaderDir, "status", "--porcelain"]).length > 0,
     pxtSourceDigest,
     pxtCoreSourceDigest,
+    bootloaderSourceDigest,
+    cpbUpdaterName,
+    cpbUpdaterSha256,
     releaseBuilderDigest,
     serviceWorkerReleaseId,
     targetVersion,
