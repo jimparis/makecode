@@ -55,7 +55,7 @@ secret scan.
 ## Current production
 
 `makecode.jim.sh` currently serves release
-`v0.15.77-alpha.a725d7933181`. It provides:
+`v0.15.77-alpha.8a424ac10b3f`. It provides:
 
 - the unified CPX/CPB editor and polished dark Standard theme;
 - exactly two validated built-in firmware caches;
@@ -63,10 +63,14 @@ secret scan.
 - release-aware service workers and no implicit external requests;
 - a curated, offline-opening extension gallery with pinned recommendations,
   consistent fallback artwork, installed-package visibility, and removal;
-- the legacy direct-transfer implementation, which still requires correction
-  because an older CPX bootloader has neither WebUSB nor a persistent serial;
-- guided `Connect Device` / `Send to Board` actions, explicit alternatives,
-  board-specific manual-copy instructions, and failure-only Linux help;
+- WebUSB-based direct transfer with no WebHID pairing dependency;
+- a deliberate `...` menu ordered as `Choose Hardware`, `Download as File`,
+  and `Connect Device` / `Connect New Device`;
+- guided `Connect Device` / `Send to Board` actions, retry/manual-download/
+  cancel failure choices, board-specific manual-copy instructions, and
+  expandable Linux troubleshooting inside the connection dialogs;
+- a same-origin, checksummed official Adafruit CPX v4 bootloader updater that
+  adds HF2 WebUSB and a hardware-derived persistent USB serial;
 - a same-origin, checksummed CPB HF2 bootloader updater with version checks,
   warnings, installation verification, and recovery documentation;
 - automatic repair of stale board dependencies and invalid native caches,
@@ -97,13 +101,12 @@ The site remains an alpha with `X-Robots-Tag: noindex, nofollow`.
 
 ### 2. Cross-browser and physical-device acceptance
 
-- Package and deploy the reproducibly built official Adafruit CPX bootloader
-  v4 updater. Its bootloader and updater validators cover vectors, bounds,
-  descriptors, block completeness, source contract, checksums, and negative
-  mutations. Two clean builds produced identical artifacts.
 - With explicit approval, install the updater on the attached CPX. It erases
   the current application, writes the 8 KiB bootloader, restores BOOTPROT, and
-  should provide a hardware-derived serial plus HF2 WebUSB.
+  should provide a hardware-derived serial plus HF2 WebUSB. The deployed
+  updater is reproducibly built from pinned official Adafruit v4.0.0 source;
+  its validators cover vectors, bounds, descriptors, block completeness,
+  source contract, checksums, and negative mutations.
 - Confirm 25 CPX direct upload/run cycles with no unexpected UF2 fallback.
 - Run 25 direct upload/run cycles per board in Linux Chrome/Chromium and
   Chromebook Chrome; verify retry, explicit UF2 fallback, and reconnect behavior.
@@ -183,6 +186,6 @@ make status
 git status --short
 ```
 
-Finish the CPX WebUSB release, then request explicit confirmation before
-installing its updater on the attached board. Never install firmware without a
-board present and explicit confirmation of the intended device/recovery path.
+Request explicit confirmation before installing the CPX updater on the
+attached board. Never install firmware without a board present and explicit
+confirmation of the intended device/recovery path.
