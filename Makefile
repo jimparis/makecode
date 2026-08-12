@@ -1,12 +1,12 @@
 PXT_DIR := $(CURDIR)/pxt-circuit-playground
 PXT_CORE_DIR := $(CURDIR)/pxt
 UDEV_RULES := $(PXT_DIR)/docs/static/60-circuit-playground-webusb.rules
-SUBMODULES := pxt pxt-circuit-playground codal-circuit-playground-bluefruit Adafruit_nRF52_Bootloader
+SUBMODULES := pxt pxt-circuit-playground codal-circuit-playground-bluefruit Adafruit_nRF52_Bootloader uf2-samdx1
 NODE_IMAGE := docker.io/library/node@sha256:673fce836d5a9185da33352682bfedb17c174d016370d08616748dff76fda862
 PXT_CONTAINER := podman run --rm -v $(CURDIR):/workspace:Z -w /workspace/pxt-circuit-playground $(NODE_IMAGE)
 PXT_CORE_CONTAINER := podman run --rm -v $(CURDIR):/workspace:Z -w /workspace/pxt $(NODE_IMAGE)
 
-.PHONY: submodules-init submodules-check status pxt-core-install pxt-core-build pxt-install pxt-check pxt-firmware-bounds pxt-static-check pxt-cpb-build static-build static-browser-check static-firefox-check production-browser-check production-firefox-check pxt-serve codal-check codal-build bootloader-check bootloader-build udev-check udev-install
+.PHONY: submodules-init submodules-check status pxt-core-install pxt-core-build pxt-install pxt-check pxt-firmware-bounds pxt-static-check pxt-cpb-build static-build static-browser-check static-firefox-check production-browser-check production-firefox-check pxt-serve codal-check codal-build bootloader-check bootloader-build cpx-bootloader-build udev-check udev-install
 
 submodules-init:
 	git submodule update --init -- $(SUBMODULES)
@@ -22,7 +22,8 @@ submodules-init:
 	configure_upstream pxt https://github.com/microsoft/pxt.git; \
 	configure_upstream pxt-circuit-playground https://github.com/microsoft/pxt-maker.git; \
 	configure_upstream codal-circuit-playground-bluefruit https://github.com/mmoskal/codal-nrf52840-dk.git; \
-	configure_upstream Adafruit_nRF52_Bootloader https://github.com/adafruit/Adafruit_nRF52_Bootloader.git
+	configure_upstream Adafruit_nRF52_Bootloader https://github.com/adafruit/Adafruit_nRF52_Bootloader.git; \
+	configure_upstream uf2-samdx1 https://github.com/adafruit/uf2-samdx1.git
 
 submodules-check:
 	@set -eu; \
@@ -37,7 +38,8 @@ submodules-check:
 	test "$$(git -C pxt remote get-url upstream)" = https://github.com/microsoft/pxt.git || { echo "pxt has the wrong upstream remote; run make submodules-init" >&2; exit 1; }; \
 	test "$$(git -C pxt-circuit-playground remote get-url upstream)" = https://github.com/microsoft/pxt-maker.git || { echo "pxt-circuit-playground has the wrong upstream remote; run make submodules-init" >&2; exit 1; }; \
 	test "$$(git -C codal-circuit-playground-bluefruit remote get-url upstream)" = https://github.com/mmoskal/codal-nrf52840-dk.git || { echo "codal-circuit-playground-bluefruit has the wrong upstream remote; run make submodules-init" >&2; exit 1; }; \
-	test "$$(git -C Adafruit_nRF52_Bootloader remote get-url upstream)" = https://github.com/adafruit/Adafruit_nRF52_Bootloader.git || { echo "Adafruit_nRF52_Bootloader has the wrong upstream remote; run make submodules-init" >&2; exit 1; }
+	test "$$(git -C Adafruit_nRF52_Bootloader remote get-url upstream)" = https://github.com/adafruit/Adafruit_nRF52_Bootloader.git || { echo "Adafruit_nRF52_Bootloader has the wrong upstream remote; run make submodules-init" >&2; exit 1; }; \
+	test "$$(git -C uf2-samdx1 remote get-url upstream)" = https://github.com/adafruit/uf2-samdx1.git || { echo "uf2-samdx1 has the wrong upstream remote; run make submodules-init" >&2; exit 1; }
 
 status: submodules-check
 	@git status --short --branch
@@ -46,6 +48,7 @@ status: submodules-check
 	@git -C pxt-circuit-playground status --short --branch
 	@git -C codal-circuit-playground-bluefruit status --short --branch
 	@git -C Adafruit_nRF52_Bootloader status --short --branch
+	@git -C uf2-samdx1 status --short --branch
 
 udev-check:
 	udevadm verify $(UDEV_RULES)
@@ -85,7 +88,7 @@ pxt-static-check: submodules-check
 pxt-cpb-build: codal-check
 	node scripts/build-pxt-cpb.js
 
-static-build: pxt-check bootloader-build
+static-build: pxt-check bootloader-build cpx-bootloader-build
 	node scripts/build-static.js
 	node scripts/check-static-browser.js
 
@@ -113,6 +116,9 @@ bootloader-check: codal-check
 
 bootloader-build: bootloader-check
 	node scripts/build-bootloader.js
+
+cpx-bootloader-build: submodules-check
+	node scripts/build-cpx-bootloader.js
 
 pxt-serve: submodules-check
 	podman run --rm -it \

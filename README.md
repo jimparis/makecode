@@ -34,7 +34,7 @@ external packages are optional, user-initiated features.
 
 ## Repository layout
 
-This orchestration repository pins four independently versioned source
+This orchestration repository pins five independently versioned source
 repositories as Git submodules:
 
 | Directory | Purpose |
@@ -43,6 +43,7 @@ repositories as Git submodules:
 | `pxt-circuit-playground/` | Circuit Playground target, blocks, simulator, documentation, and web package |
 | `codal-circuit-playground-bluefruit/` | Circuit Playground Bluefruit CODAL runtime |
 | `Adafruit_nRF52_Bootloader/` | Bluefruit UF2/DFU bootloader and HF2 WebUSB support |
+| `uf2-samdx1/` | Official Adafruit Express UF2/HF2 WebUSB bootloader source |
 
 Each top-level commit records the exact commit of every source repository.
 Each source repository also retains an `upstream` remote so fixes can be
@@ -53,8 +54,8 @@ test results, and remaining hardware acceptance work.
 ## Building and testing
 
 The top-level Makefile runs the editor and native toolchains in pinned
-containers. Initialize the four top-level submodules after cloning (the
-bootloader build initializes only the nested submodules it needs):
+containers. Initialize the five top-level submodules after cloning (the
+bootloader builds initialize only the nested submodules they need):
 
 ```sh
 git clone https://github.com/jimparis/makecode.git
@@ -104,6 +105,7 @@ make codal-check
 make codal-build
 make bootloader-check
 make bootloader-build
+make cpx-bootloader-build
 make static-build
 make static-firefox-check
 ```
@@ -123,9 +125,9 @@ backup procedure, and rollback process.
 
 The editor and self-hosted sharing service are deployed as an alpha. Automated
 Chrome and Firefox acceptance is extensive, but physical-board validation is
-still required for CPB WebUSB flashing, bootloader recovery, speaker cold
-boots, and the full peripheral matrix. Do not treat generated CPB bootloader
-artifacts as hardware-proven releases yet.
+still required for repeated CPX/CPB WebUSB flashing, bootloader recovery, CPB
+speaker cold boots, and the full peripheral matrix. Do not treat generated
+bootloader artifacts as hardware-proven releases yet.
 
 This project is independently maintained and is not an official Adafruit or
 Microsoft service. Microsoft MakeCode/PXT and the Adafruit-derived components

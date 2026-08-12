@@ -5,7 +5,7 @@ agreed plan, current implementation state, known build failures, and ordered
 unfinished work. Update it whenever a milestone, blocker, or important design
 decision changes.
 
-This directory orchestrates four independently versioned repositories, pinned
+This directory orchestrates five independently versioned repositories, pinned
 at exact commits as Git submodules, for the unified Circuit Playground MakeCode
 project:
 
@@ -14,6 +14,7 @@ project:
   deployment assets.
 - `codal-circuit-playground-bluefruit/` — CPB-specific nRF52840 native runtime.
 - `Adafruit_nRF52_Bootloader/` — CPB bootloader with the HF2 WebUSB interface.
+- `uf2-samdx1/` — official Adafruit CPX UF2/WebUSB bootloader source.
 
 Work locally as `jim`. Run commands from `/home/jim/git/makecode` through the
 top-level Makefile where possible. Run `make submodules-init` after a fresh

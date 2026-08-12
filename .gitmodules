@@ -14,3 +14,6 @@
 	path = Adafruit_nRF52_Bootloader
 	url = https://github.com/jimparis/Adafruit_nRF52_Bootloader.git
 	branch = main
+[submodule "uf2-samdx1"]
+	path = uf2-samdx1
+	url = https://github.com/jimparis/uf2-samdx1.git
