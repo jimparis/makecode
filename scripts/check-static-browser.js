@@ -142,6 +142,25 @@ async function clickVisible(page, selector) {
     }, selector);
 }
 
+async function clickVisibleText(page, selector, text) {
+    await page.evaluate(({ selector, text }) => {
+        const element = [...document.querySelectorAll(selector)].find(candidate => {
+            const bounds = candidate.getBoundingClientRect();
+            return bounds.width > 0 && bounds.height > 0 && candidate.innerText.trim() === text;
+        });
+        if (!element) throw new Error(`No visible ${selector} has text ${text}`);
+        element.click();
+    }, { selector, text });
+}
+
+async function clickDownloadAsFile(page) {
+    await clickVisible(page, ".hw-button");
+    await page.waitForFunction(() => [...document.querySelectorAll("[role=menuitem]")]
+        .some(element => element.innerText.trim() === "Download as File" &&
+            element.getBoundingClientRect().width > 0), { timeout: 30000 });
+    await clickVisibleText(page, "[role=menuitem]", "Download as File");
+}
+
 async function replaceMonacoSource(page, source) {
     await page.evaluate(() => {
         const input = [...document.querySelectorAll(".monaco-editor textarea.inputarea")]
@@ -1165,40 +1184,43 @@ async function main() {
         await checkExtensionsBrowser(page);
 
         if (browserName !== "firefox") {
-            await clickVisible(page, ".hw-button");
-            await page.waitForFunction(() => [...document.querySelectorAll("[role=menuitem]")]
-                .some(element => element.innerText.trim() === "Linux USB setup" &&
-                    element.getBoundingClientRect().width > 0), { timeout: 30000 });
-            await page.evaluate(() => {
-                const item = [...document.querySelectorAll("[role=menuitem]")]
-                    .find(element => element.innerText.trim() === "Linux USB setup" &&
-                        element.getBoundingClientRect().width > 0);
-                if (!item) throw new Error("Linux USB setup menu item is missing");
-                item.click();
-            });
+            const primaryText = await page.$eval(".download-button", element => element.innerText.trim());
+            assert(primaryText === "Connect Device",
+                `unpaired Chromium primary action is ${JSON.stringify(primaryText)} instead of Connect Device`);
+            await clickVisible(page, ".download-button");
             await page.waitForFunction(() => {
-                const dialog = document.querySelector("[role=dialog]");
-                return dialog?.innerText.includes("Desktop Linux normally requires") &&
-                    dialog.innerText.includes("60-circuit-playground-webusb.rules");
+                const text = document.querySelector("[role=dialog]")?.innerText || "";
+                return text.includes("Connect your Circuit Playground") &&
+                    text.includes("Connect Circuit Playground to your computer with a USB cable") &&
+                    text.includes("Press Connect Device below") &&
+                    text.includes("select the device with \"Circuit Playground\" in its name");
             }, { timeout: 30000 });
-            await page.evaluate(() => {
-                const button = [...document.querySelectorAll("[role=dialog] button")]
-                    .find(element => element.innerText.trim() === "Download Linux rules");
-                if (!button) throw new Error("Download Linux rules button is missing");
-                button.click();
-            });
-            const downloadedRules = await waitForDownload(downloadDirectory, ".rules");
-            const expectedRules = fs.readFileSync(path.join(
-                workspace, "pxt-circuit-playground", "docs", "static",
-                "60-circuit-playground-webusb.rules"), "utf8");
-            assert(fs.readFileSync(downloadedRules, "utf8") === expectedRules,
-                "downloaded Linux rules differ from the versioned target asset");
-            await page.evaluate(() => {
-                const button = [...document.querySelectorAll("[role=dialog] button")]
-                    .find(element => element.innerText.trim() === "Close");
-                if (!button) throw new Error("Linux USB setup Close button is missing");
-                button.click();
-            });
+            await clickVisible(page, '[role=dialog] [title="Close"]');
+            await page.waitForSelector("[role=dialog]", { hidden: true, timeout: 30000 });
+
+            await clickVisible(page, ".hw-button");
+            const menuItems = await page.evaluate(() => [...document.querySelectorAll("[role=menuitem]")]
+                .filter(element => element.getBoundingClientRect().width > 0)
+                .map(element => element.innerText.trim()));
+            for (const item of ["Connect Device", "Choose Hardware", "Download as File"]) {
+                assert(menuItems.includes(item), `download alternatives omit ${item}: ${menuItems.join(", ")}`);
+            }
+            assert(!menuItems.some(item => /Linux USB setup/i.test(item)),
+                `Linux setup leaked into the normal alternatives menu: ${menuItems.join(", ")}`);
+            await page.keyboard.press("Escape");
+
+            await clickDownloadAsFile(page);
+            const guidedCpbUf2 = await waitForDownload(downloadDirectory, ".uf2");
+            validateUf2(guidedCpbUf2, "guided CPB", 0xada52840, 0x26000, 0xea000);
+            fs.renameSync(guidedCpbUf2, `${guidedCpbUf2}.checked`);
+            await page.waitForFunction(() => {
+                const text = document.querySelector("[role=dialog]")?.innerText || "";
+                return text.includes("Download completed") &&
+                    text.includes("Open your Downloads folder") &&
+                    text.includes("CPLAYBTBOOT") &&
+                    text.includes("newest .uf2 file");
+            }, { timeout: 30000 });
+            await clickVisibleText(page, "[role=dialog] button", "Done");
             await page.waitForSelector("[role=dialog]", { hidden: true, timeout: 30000 });
         }
 
@@ -1360,7 +1382,7 @@ async function main() {
             window.monaco && monaco.editor.getModels().some(model =>
                 /main\.ts$/.test(model.uri.path) && model.getValue().includes(value)),
         { timeout: 30000 }, infraredCall);
-        await clickVisible(page, ".download-button");
+        await clickDownloadAsFile(page);
         let diagnostic;
         try {
             diagnostic = await page.waitForFunction(() => {

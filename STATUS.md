@@ -40,8 +40,8 @@ the same origin and must not depend on Microsoft services.
 
 | Repository | Role | Pinned commit |
 | --- | --- | --- |
-| `pxt/` | PXT framework fork | `1e1db0691b59` |
-| `pxt-circuit-playground/` | target/editor/simulator | `fb741719f311` |
+| `pxt/` | PXT framework fork | `4880d9b7b420` |
+| `pxt-circuit-playground/` | target/editor/simulator | `8eb3fb0044f7` |
 | `codal-circuit-playground-bluefruit/` | CPB native runtime | `30d62c331ea2` |
 | `Adafruit_nRF52_Bootloader/` | CPB HF2 bootloader | `7836c7cc3d81` |
 
@@ -88,9 +88,9 @@ The site remains an alpha with `X-Robots-Tag: noindex, nofollow`.
 
 ### 2. Cross-browser and physical-device acceptance
 
-- Deploy the built-in desktop-Linux USB setup dialog, remove Apache's duplicate
-  application-owned response headers, and install the product-specific udev
-  rule on `psychosis`.
+- Deploy the guided connect/send/manual-download flow with failure-only Linux
+  troubleshooting, remove Apache's duplicate application-owned response
+  headers, and install the product-specific udev rule on `psychosis`.
 - Grant the stock CPX bootloader once in Chromium, then confirm 25 direct
   upload/run cycles with no unexpected UF2 fallback.
 - Run 25 direct upload/run cycles per board in Linux Chrome/Chromium and
