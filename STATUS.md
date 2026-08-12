@@ -41,7 +41,7 @@ depend on Microsoft services.
 | Repository | Role | Pinned commit |
 | --- | --- | --- |
 | `pxt/` | PXT framework fork | `b6fd06e058f0` |
-| `pxt-circuit-playground/` | target/editor/simulator | `43517a73d1ce` |
+| `pxt-circuit-playground/` | target/editor/simulator | `ce1191601fc0` |
 | `codal-circuit-playground-bluefruit/` | CPB native runtime | `30d62c331ea2` |
 | `Adafruit_nRF52_Bootloader/` | CPB HF2 bootloader | `7836c7cc3d81` |
 
@@ -100,8 +100,9 @@ The site remains an alpha with `X-Robots-Tag: noindex, nofollow`.
   diagnostics where practical.
 - Add the production share directory to normal backups.
 - Install/test narrow Linux udev rules for CPX/CPB WebUSB.
-- Add GitHub Actions and optional GHCR publication with pinned builders and no
-  PR secrets. Keep local reproducibility as the source of truth.
+- Add optional GHCR publication with pinned builders and no PR secrets. GitHub
+  Actions now runs read-only, pinned CPX/CPB builds while local reproducibility
+  remains the source of truth.
 - Triage inherited npm vulnerabilities deliberately; never use
   `npm audit fix --force` as a blanket upgrade.
 
