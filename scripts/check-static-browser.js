@@ -1211,6 +1211,8 @@ async function main() {
             const primaryText = primaryState.text;
             assert(primaryText === "Connect Device",
                 `unpaired Chromium primary action is not Connect Device: ${JSON.stringify(primaryState)}`);
+            assert(!primaryState.hasHidFilters,
+                `guided transfer still depends on WebHID filters: ${JSON.stringify(primaryState)}`);
             await clickVisible(page, ".download-button");
             try {
                 await page.waitForFunction(() => {
@@ -1218,11 +1220,13 @@ async function main() {
                     return text.includes("Connect your Circuit Playground Bluefruit") &&
                         text.includes("Connect Circuit Playground Bluefruit to your computer with a USB cable") &&
                         text.includes("Press Connect Device below") &&
-                        text.includes("select the device with \"Circuit Playground\" in its name");
+                        text.includes("select the device with \"Circuit Playground\" in its name") &&
+                        text.includes("Troubleshooting tips for Linux");
                 }, { timeout: 30000 });
             } catch (error) {
                 const state = await page.evaluate(() => ({
                     dialogs: [...document.querySelectorAll("[role=dialog]")].map(element => element.innerText),
+                    dialogHtml: document.querySelector("[role=dialog]")?.innerHTML,
                     downloadText: document.querySelector(".download-button")?.innerText.trim(),
                     connected: pxt.packetio.isConnected(),
                     connecting: pxt.packetio.isConnecting(),
@@ -1240,6 +1244,9 @@ async function main() {
             for (const item of ["Connect Device", "Choose Hardware", "Download as File"]) {
                 assert(menuItems.includes(item), `download alternatives omit ${item}: ${menuItems.join(", ")}`);
             }
+            assert(menuItems.indexOf("Choose Hardware") < menuItems.indexOf("Download as File") &&
+                menuItems.indexOf("Download as File") < menuItems.indexOf("Connect Device"),
+            `download alternatives are not deliberately ordered: ${menuItems.join(", ")}`);
             assert(!menuItems.some(item => /Linux USB setup/i.test(item)),
                 `Linux setup leaked into the normal alternatives menu: ${menuItems.join(", ")}`);
             await page.keyboard.press("Escape");

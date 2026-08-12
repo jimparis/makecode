@@ -30,7 +30,7 @@ the same origin and must not depend on Microsoft services.
   versioned application image. GitHub/package access is user-initiated only.
 - Production is a versioned, rootless, read-only static-package container.
   Never bind-mount a source checkout over `/site` or the application directory.
-- Pin the four independently versioned source repositories as submodules.
+- Pin the five independently versioned source repositories as submodules.
   Preserve each `upstream` remote and publish child commits before updating the
   parent gitlink.
 - CPB application flash is `0x26000..<0xEA000`; the bootloader starts at
@@ -40,10 +40,11 @@ the same origin and must not depend on Microsoft services.
 
 | Repository | Role | Pinned commit |
 | --- | --- | --- |
-| `pxt/` | PXT framework fork | `f196b2348a27` |
-| `pxt-circuit-playground/` | target/editor/simulator | `b525e96f9846` |
+| `pxt/` | PXT framework fork | `54fc7ae4b3f1` |
+| `pxt-circuit-playground/` | target/editor/simulator | `f401b196440c` |
 | `codal-circuit-playground-bluefruit/` | CPB native runtime | `30d62c331ea2` |
 | `Adafruit_nRF52_Bootloader/` | CPB HF2 bootloader | `e7b48c5467de` |
+| `uf2-samdx1/` | official CPX UF2/HF2 bootloader | `d4dc92889759` |
 
 The parent gitlinks are the source of truth for this combination. All have
 public `jimparis/*` origins; initialized children retain `upstream`. Use
@@ -62,8 +63,8 @@ secret scan.
 - release-aware service workers and no implicit external requests;
 - a curated, offline-opening extension gallery with pinned recommendations,
   consistent fallback artwork, installed-package visibility, and removal;
-- CPX application-mode WebUSB plus transparent stock-bootloader WebHID, with
-  UF2 fallback only after an explicit manual-download choice;
+- the legacy direct-transfer implementation, which still requires correction
+  because an older CPX bootloader has neither WebUSB nor a persistent serial;
 - guided `Connect Device` / `Send to Board` actions, explicit alternatives,
   board-specific manual-copy instructions, and failure-only Linux help;
 - a same-origin, checksummed CPB HF2 bootloader updater with version checks,
@@ -96,8 +97,14 @@ The site remains an alpha with `X-Robots-Tag: noindex, nofollow`.
 
 ### 2. Cross-browser and physical-device acceptance
 
-- Grant the stock CPX bootloader once in Chromium, then confirm 25 direct
-  upload/run cycles with no unexpected UF2 fallback.
+- Package and deploy the reproducibly built official Adafruit CPX bootloader
+  v4 updater. Its bootloader and updater validators cover vectors, bounds,
+  descriptors, block completeness, source contract, checksums, and negative
+  mutations. Two clean builds produced identical artifacts.
+- With explicit approval, install the updater on the attached CPX. It erases
+  the current application, writes the 8 KiB bootloader, restores BOOTPROT, and
+  should provide a hardware-derived serial plus HF2 WebUSB.
+- Confirm 25 CPX direct upload/run cycles with no unexpected UF2 fallback.
 - Run 25 direct upload/run cycles per board in Linux Chrome/Chromium and
   Chromebook Chrome; verify retry, explicit UF2 fallback, and reconnect behavior.
 - Manually confirm Firefox persistence, simulator, export/import, and UF2.
@@ -136,7 +143,9 @@ The site remains an alpha with `X-Robots-Tag: noindex, nofollow`.
 - Current npm audit reports inherited vulnerabilities; controlled dependency
   upgrades are future work.
 - The product-specific udev rule is installed on `psychosis`; the attached CPX
-  bootloader is accessible as `root:plugdev` mode `0660`.
+  is currently in an older bootloader at `239a:0018`, accessible as
+  `root:plugdev` mode `0660`. That bootloader has CDC/MSC/HID but no WebUSB or
+  USB serial, so Chromium cannot persist its HID grant across reconnects.
 - Apache passes through the application-owned `Permissions-Policy` and
   `X-Robots-Tag` headers without adding duplicates.
 - The headless Firefox gate currently reaches and passes the extension checks,
@@ -158,6 +167,7 @@ make production-browser-check
 make production-firefox-check
 make codal-build
 make bootloader-build
+make cpx-bootloader-build
 ```
 
 `make static-build` creates the versioned OCI archive, metadata, checksums, and
@@ -173,5 +183,6 @@ make status
 git status --short
 ```
 
-Resume CPB hardware/runtime acceptance. Never install firmware without a board
-present and explicit confirmation of the intended device/recovery path.
+Finish the CPX WebUSB release, then request explicit confirmation before
+installing its updater on the attached board. Never install firmware without a
+board present and explicit confirmation of the intended device/recovery path.

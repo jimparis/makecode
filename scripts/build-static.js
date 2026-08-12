@@ -14,6 +14,10 @@ const bootloaderDir = path.join(workspace, "Adafruit_nRF52_Bootloader");
 const bootloaderArtifactDir = path.join(workspace, "artifacts", "bootloader");
 const cpbUpdaterName = "update-circuitplayground_nrf52840_bootloader-makecode-hf2-nosd.uf2";
 const cpbUpdaterSource = path.join(bootloaderArtifactDir, cpbUpdaterName);
+const cpxBootloaderDir = path.join(workspace, "uf2-samdx1");
+const cpxBootloaderArtifactDir = path.join(workspace, "artifacts", "cpx-bootloader");
+const cpxUpdaterName = "update-circuit-playground-express-bootloader-v4.0.0.uf2";
+const cpxUpdaterSource = path.join(cpxBootloaderArtifactDir, cpxUpdaterName);
 const generatedSite = path.join(pxtDir, "built", "static-release");
 const outputDir = path.join(workspace, "artifacts", ".static-staging");
 const finalOutputDir = path.join(workspace, "artifacts", "static");
@@ -111,10 +115,12 @@ if (previousManifest) {
 const pxtCommit = capture("git", ["-C", pxtDir, "rev-parse", "HEAD"]);
 const pxtCoreCommit = capture("git", ["-C", pxtCoreDir, "rev-parse", "HEAD"]);
 const bootloaderCommit = capture("git", ["-C", bootloaderDir, "rev-parse", "HEAD"]);
+const cpxBootloaderCommit = capture("git", ["-C", cpxBootloaderDir, "rev-parse", "HEAD"]);
 const sourceDateEpoch = capture("git", ["-C", pxtDir, "show", "-s", "--format=%ct", "HEAD"]);
 const pxtSourceDigest = gitTreeDigest(pxtDir);
 const pxtCoreSourceDigest = gitTreeDigest(pxtCoreDir);
 const bootloaderSourceDigest = gitTreeDigest(bootloaderDir);
+const cpxBootloaderSourceDigest = gitTreeDigest(cpxBootloaderDir);
 const bootloaderMetadataPath = path.join(bootloaderArtifactDir, "BUILD-METADATA.json");
 const bootloaderChecksumsPath = path.join(bootloaderArtifactDir, "SHA256SUMS");
 for (const filename of [cpbUpdaterSource, bootloaderMetadataPath, bootloaderChecksumsPath]) {
@@ -133,9 +139,31 @@ if (bootloaderMetadata.sourceCommit !== bootloaderCommit || bootloaderMetadata.s
     bootloaderChecksums.get(cpbUpdaterName) !== cpbUpdaterSha256) {
     fail("CPB bootloader updater does not match its pinned, validated build metadata");
 }
+const cpxBootloaderMetadataPath = path.join(cpxBootloaderArtifactDir, "metadata.json");
+const cpxBootloaderChecksumsPath = path.join(cpxBootloaderArtifactDir, "SHA256SUMS");
+for (const filename of [cpxUpdaterSource, cpxBootloaderMetadataPath, cpxBootloaderChecksumsPath]) {
+    if (!fs.existsSync(filename)) fail(`missing CPX bootloader build artifact: ${filename}`);
+}
+const cpxBootloaderMetadata = JSON.parse(fs.readFileSync(cpxBootloaderMetadataPath, "utf8"));
+const cpxBootloaderChecksums = checksumManifest(cpxBootloaderChecksumsPath);
+const cpxUpdaterSha256 = sha256(cpxUpdaterSource);
+if (cpxBootloaderMetadata.sourceCommit !== cpxBootloaderCommit ||
+    cpxBootloaderMetadata.sourceDirty ||
+    cpxBootloaderMetadata.sourceVersion !== "v4.0.0" ||
+    cpxBootloaderMetadata.officialAdafruitSource !== true ||
+    cpxBootloaderMetadata.updater.filename !== cpxUpdaterName ||
+    cpxBootloaderMetadata.updater.updaterMayOverwriteApplication !== true ||
+    cpxBootloaderMetadata.updater.updaterWritesBootloaderRange !== "0x0..<0x2000" ||
+    cpxBootloaderMetadata.bootloader.usbSerial !== "hardware-derived 32-character serial" ||
+    !cpxBootloaderMetadata.bootloader.usbInterfaces.includes("HF2 WebUSB") ||
+    cpxBootloaderMetadata.updater.updaterUf2Bytes !== fs.statSync(cpxUpdaterSource).size ||
+    cpxBootloaderChecksums.get(cpxUpdaterName) !== cpxUpdaterSha256) {
+    fail("CPX bootloader updater does not match its pinned, validated build metadata");
+}
 const releaseBuilderDigest = crypto.createHash("sha256")
     .update(fs.readFileSync(__filename))
     .update(fs.readFileSync(path.join(workspace, "scripts", "build-bootloader.js")))
+    .update(fs.readFileSync(path.join(workspace, "scripts", "build-cpx-bootloader.js")))
     .update(fs.readFileSync(path.join(workspace, "deployment", "Containerfile")))
     .update(fs.readFileSync(path.join(workspace, "deployment", "circuit-playground-makecode.container.in")))
     .update(fs.readFileSync(path.join(workspace, "deployment", "server", "go.mod")))
@@ -145,7 +173,9 @@ const serviceWorkerReleaseId = crypto.createHash("sha256")
     .update(pxtSourceDigest)
     .update(pxtCoreSourceDigest)
     .update(bootloaderSourceDigest)
+    .update(cpxBootloaderSourceDigest)
     .update(cpbUpdaterSha256)
+    .update(cpxUpdaterSha256)
     .update(releaseBuilderDigest)
     .digest("hex");
 fs.rmSync(generatedSite, { recursive: true, force: true });
@@ -165,6 +195,7 @@ fs.cpSync(generatedSite, siteDir, { recursive: true });
 const firmwareDir = path.join(siteDir, "docs", "static", "firmware");
 fs.mkdirSync(firmwareDir, { recursive: true });
 fs.copyFileSync(cpbUpdaterSource, path.join(firmwareDir, cpbUpdaterName));
+fs.copyFileSync(cpxUpdaterSource, path.join(firmwareDir, cpxUpdaterName));
 const releaseManifest = path.join(siteDir, "release.manifest");
 const releaseContents = fs.readFileSync(releaseManifest, "utf8")
     .replace(/^# ver .*$/m, `# ver SOURCE_DATE_EPOCH ${sourceDateEpoch}`);
@@ -183,11 +214,13 @@ const releaseVersion = process.env.RELEASE_VERSION ||
 if (!/^[A-Za-z0-9][A-Za-z0-9_.-]{0,127}$/.test(releaseVersion)) {
     fail(`invalid release version: ${releaseVersion}`);
 }
-const sameReleaseInputs = previousMetadata.reproducibleManifestVersion === 3 &&
+const sameReleaseInputs = previousMetadata.reproducibleManifestVersion === 4 &&
     previousMetadata.pxtSourceDigest === pxtSourceDigest &&
     previousMetadata.pxtCoreSourceDigest === pxtCoreSourceDigest &&
     previousMetadata.bootloaderSourceDigest === bootloaderSourceDigest &&
+    previousMetadata.cpxBootloaderSourceDigest === cpxBootloaderSourceDigest &&
     previousMetadata.cpbUpdaterSha256 === cpbUpdaterSha256 &&
+    previousMetadata.cpxUpdaterSha256 === cpxUpdaterSha256 &&
     previousMetadata.releaseBuilderDigest === releaseBuilderDigest;
 if (sameReleaseInputs && previousManifest && previousManifest !== manifest) {
     const parse = value => new Map(value.trim().split("\n").filter(Boolean)
@@ -306,6 +339,16 @@ try {
         fail("static container did not serve the validated CPB updater as an exact download");
     }
     fs.rmSync(servedUpdater);
+    const cpxUpdaterUrl = `${url}static/firmware/${cpxUpdaterName}`;
+    const cpxUpdaterHeaders = capture("curl", ["-fsSI", cpxUpdaterUrl]);
+    const servedCpxUpdater = path.join(outputDir, "served-cpx-updater.uf2");
+    run("curl", ["-fsS", "-o", servedCpxUpdater, cpxUpdaterUrl]);
+    if (!/^content-type:\s*application\/octet-stream\s*$/im.test(cpxUpdaterHeaders) ||
+        !new RegExp(`^content-disposition:\\s*attachment; filename="${cpxUpdaterName}"\\s*$`, "im")
+            .test(cpxUpdaterHeaders) || sha256(servedCpxUpdater) !== cpxUpdaterSha256) {
+        fail("static container did not serve the validated CPX updater as an exact download");
+    }
+    fs.rmSync(servedCpxUpdater);
     if (!/<h1>Boards<\/h1>/.test(boardsBody)) {
         fail("static container did not resolve the clean /boards documentation route");
     }
@@ -354,19 +397,24 @@ try {
 }
 
 fs.writeFileSync(path.join(outputDir, "BUILD-METADATA.json"), `${JSON.stringify({
-    reproducibleManifestVersion: 3,
+    reproducibleManifestVersion: 4,
     reproducibleOciArchiveVersion: 2,
     pxtCommit,
     pxtCoreCommit,
     bootloaderCommit,
+    cpxBootloaderCommit,
     pxtDirty: capture("git", ["-C", pxtDir, "status", "--porcelain"]).length > 0,
     pxtCoreDirty: capture("git", ["-C", pxtCoreDir, "status", "--porcelain"]).length > 0,
     bootloaderDirty: capture("git", ["-C", bootloaderDir, "status", "--porcelain"]).length > 0,
+    cpxBootloaderDirty: capture("git", ["-C", cpxBootloaderDir, "status", "--porcelain"]).length > 0,
     pxtSourceDigest,
     pxtCoreSourceDigest,
     bootloaderSourceDigest,
+    cpxBootloaderSourceDigest,
     cpbUpdaterName,
     cpbUpdaterSha256,
+    cpxUpdaterName,
+    cpxUpdaterSha256,
     releaseBuilderDigest,
     serviceWorkerReleaseId,
     targetVersion,
