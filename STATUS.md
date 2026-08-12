@@ -15,9 +15,9 @@ Publish one maintainable editor at <https://makecode.jim.sh> for:
 
 Both boards must support editing, simulation, offline built-in compilation,
 safe UF2 download, project persistence/export/import, and board switching that
-preserves source. Chrome/Chromium should support WebUSB; Firefox must support
-everything except WebUSB. Sharing is hosted on the same origin and must not
-depend on Microsoft services.
+preserves source. Chrome/Chromium should support direct WebUSB/WebHID transfer;
+Firefox must support everything except direct transfer. Sharing is hosted on
+the same origin and must not depend on Microsoft services.
 
 ## Non-negotiable design decisions
 
@@ -40,8 +40,8 @@ depend on Microsoft services.
 
 | Repository | Role | Pinned commit |
 | --- | --- | --- |
-| `pxt/` | PXT framework fork | `b6fd06e058f0` |
-| `pxt-circuit-playground/` | target/editor/simulator | `4cfd2ec3acb8` |
+| `pxt/` | PXT framework fork | `609000d807d8` |
+| `pxt-circuit-playground/` | target/editor/simulator | `1db6e1c45855` |
 | `codal-circuit-playground-bluefruit/` | CPB native runtime | `30d62c331ea2` |
 | `Adafruit_nRF52_Bootloader/` | CPB HF2 bootloader | `7836c7cc3d81` |
 
@@ -54,7 +54,7 @@ secret scan.
 ## Current production
 
 `makecode.jim.sh` currently serves release
-`v0.15.77-alpha.bc593f8725f1`. It provides:
+`v0.15.77-alpha.d7585c71a58b`. It provides:
 
 - the unified CPX/CPB editor and polished dark Standard theme;
 - exactly two validated built-in firmware caches;
@@ -62,6 +62,8 @@ secret scan.
 - release-aware service workers and no implicit external requests;
 - a curated, offline-opening extension gallery with pinned recommendations,
   consistent fallback artwork, installed-package visibility, and removal;
+- CPX application-mode WebUSB plus transparent stock-bootloader WebHID, with
+  UF2 fallback only after an explicit manual-download choice;
 - automatic repair of stale board dependencies and invalid native caches,
   verified against the affected Firefox profile on `basis`;
 - a rootless container on `psychosis`, bound to `127.0.0.1:3232`, with Apache
@@ -86,10 +88,10 @@ The site remains an alpha with `X-Robots-Tag: noindex, nofollow`.
 
 ### 2. Cross-browser and physical-device acceptance
 
-- Deploy the validated CPX application-to-bootloader reset repair, bootstrap
-  the attached CPX once, and confirm 25 WebUSB uploads without UF2 fallback.
-- Run 25 WebUSB upload/run cycles per board in Linux Chrome/Chromium and
-  Chromebook Chrome; verify UF2 fallback and reconnect behavior.
+- Finish Linux HID permission installation, grant the stock CPX bootloader once
+  in Chromium, and confirm 25 direct upload/run cycles with no UF2 fallback.
+- Run 25 direct upload/run cycles per board in Linux Chrome/Chromium and
+  Chromebook Chrome; verify retry, explicit UF2 fallback, and reconnect behavior.
 - Manually confirm Firefox persistence, simulator, export/import, and UF2.
 - Review theme hover/focus/disabled states and color-picker placement on the
   actual Chromebook and Linux desktop.
@@ -103,7 +105,7 @@ The site remains an alpha with `X-Robots-Tag: noindex, nofollow`.
 - Add the production share directory to normal backups.
 - Install the validated, product-specific Linux udev rules with
   `sudo make udev-install`, then test CPX/CPB application and bootloader
-  enumeration plus WebUSB handoff on hardware.
+  enumeration plus WebUSB/WebHID handoff on hardware.
 - Add optional GHCR publication with pinned builders and no PR secrets. GitHub
   Actions now runs read-only, pinned CPX/CPB builds while local reproducibility
   remains the source of truth.
@@ -128,6 +130,9 @@ The site remains an alpha with `X-Robots-Tag: noindex, nofollow`.
   high-resolution Arcade displays are outside v1.
 - Current npm audit reports inherited vulnerabilities; controlled dependency
   upgrades are future work.
+- The Chromium production stress gate can expose an inherited Monaco
+  cancellation during rapid editor teardown; the same production package
+  passes the complete local gate with zero external requests or console errors.
 - The headless Firefox gate currently reaches and passes the extension checks,
   then times out waiting for Monaco's hover tooltip for an already-present CPB
   unsupported-API diagnostic. Chromium production acceptance passes cleanly.
