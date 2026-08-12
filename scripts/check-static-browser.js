@@ -1230,7 +1230,7 @@ async function main() {
                 }));
                 throw new Error(`guided connect dialog did not appear: ${JSON.stringify(state)}; ${error}`);
             }
-            await clickVisible(page, '[role=dialog] [title="Close"]');
+            await clickVisible(page, '[role=dialog] [aria-label="Close"]');
             await page.waitForSelector("[role=dialog]", { hidden: true, timeout: 30000 });
 
             await clickVisible(page, ".hw-button");
@@ -1248,13 +1248,19 @@ async function main() {
             const guidedCpbUf2 = await waitForDownload(downloadDirectory, ".uf2");
             validateUf2(guidedCpbUf2, "guided CPB", 0xada52840, 0x26000, 0xea000);
             fs.renameSync(guidedCpbUf2, `${guidedCpbUf2}.checked`);
-            await page.waitForFunction(() => {
-                const text = document.querySelector("[role=dialog]")?.innerText || "";
-                return text.includes("Download completed") &&
-                    text.includes("Open your Downloads folder") &&
-                    text.includes("CPLAYBTBOOT") &&
-                    text.includes("newest .uf2 file");
-            }, { timeout: 30000 });
+            try {
+                await page.waitForFunction(() => {
+                    const text = document.querySelector("[role=dialog]")?.innerText || "";
+                    return text.includes("Download completed") &&
+                        text.includes("Open your Downloads folder") &&
+                        text.includes("CPLAYBTBOOT") &&
+                        text.includes("newest .uf2 file");
+                }, { timeout: 30000 });
+            } catch (error) {
+                const dialogs = await page.evaluate(() => [...document.querySelectorAll("[role=dialog]")]
+                    .map(element => element.innerText));
+                throw new Error(`guided file instructions did not appear: ${JSON.stringify(dialogs)}; ${error}`);
+            }
             await clickVisibleText(page, "[role=dialog] button", "Done");
             await page.waitForSelector("[role=dialog]", { hidden: true, timeout: 30000 });
         }
