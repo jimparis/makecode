@@ -1216,12 +1216,16 @@ async function main() {
             await clickVisible(page, ".download-button");
             try {
                 await page.waitForFunction(() => {
-                    const text = document.querySelector("[role=dialog]")?.innerText || "";
+                    const dialog = document.querySelector("[role=dialog]");
+                    const text = dialog?.innerText || "";
                     return text.includes("Connect your Circuit Playground Bluefruit") &&
                         text.includes("Connect Circuit Playground Bluefruit to your computer with a USB cable") &&
                         text.includes("Press Connect Device below") &&
                         text.includes("select the device with \"Circuit Playground\" in its name") &&
-                        text.includes("Troubleshooting tips for Linux");
+                        text.includes("Troubleshooting tips for Linux") &&
+                        !!pxt.appTarget.appTheme.downloadDialogTheme &&
+                        !!dialog.querySelector(".download-dialog") &&
+                        !dialog.querySelector(".stackable");
                 }, { timeout: 30000 });
             } catch (error) {
                 const state = await page.evaluate(() => ({
@@ -1374,6 +1378,20 @@ async function main() {
         assert(cpxState.variant === "samd21", "CPX board switch selected the wrong compile variant");
         assert(/\bNETWORK\b/.test(cpxState.text), "CPX toolbox is missing its Network category");
         assert(cpxState.source.includes(marker), "board switch did not preserve JavaScript source");
+        if (browserName !== "firefox") {
+            await clickVisible(page, ".download-button");
+            await page.waitForFunction(() => {
+                const dialog = document.querySelector("[role=dialog]");
+                const text = dialog?.innerText || "";
+                return text.includes("Connect your Circuit Playground Express") &&
+                    text.includes("Connect Circuit Playground Express to your computer with a USB cable") &&
+                    !!pxt.appTarget.appTheme.downloadDialogTheme &&
+                    !!dialog.querySelector(".download-dialog") &&
+                    !dialog.querySelector(".stackable");
+            }, { timeout: 30000 });
+            await clickVisible(page, '[role=dialog] [aria-label="Close"]');
+            await page.waitForSelector("[role=dialog]", { hidden: true, timeout: 30000 });
+        }
         await captureReadmeScreenshot(page, "editor-express.png",
             `${marker}\nlight.setAll(0xff0000)\n`,
             "adafruit-circuit-playground-express");
