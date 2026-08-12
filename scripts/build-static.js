@@ -244,8 +244,8 @@ try {
     const missingStaticStatus = capture("curl", [
         "-sS", "-o", "/dev/null", "-w", "%{http_code}", `${url}static/does-not-exist.png`
     ]);
-    if (!/^permissions-policy:\s*usb=\(self\)\s*$/im.test(headers)) {
-        fail("static container does not return the WebUSB permissions policy");
+    if (!/^permissions-policy:\s*usb=\(self\), hid=\(self\)\s*$/im.test(headers)) {
+        fail("static container does not return the WebUSB and WebHID permissions policy");
     }
     if (!/^x-robots-tag:\s*noindex, nofollow\s*$/im.test(headers)) {
         fail("static container does not return the alpha noindex policy");

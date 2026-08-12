@@ -143,7 +143,7 @@ func TestStaticRoutesAndHeaders(t *testing.T) {
 		if response.Code != http.StatusOK || string(body) != expected {
 			t.Fatalf("%s: status %d body %q", path, response.Code, body)
 		}
-		if response.Header().Get("Permissions-Policy") != "usb=(self)" {
+		if response.Header().Get("Permissions-Policy") != "usb=(self), hid=(self)" {
 			t.Fatalf("%s lacks permissions policy", path)
 		}
 	}

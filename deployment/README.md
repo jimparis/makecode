@@ -50,7 +50,7 @@ container file's `[Install]` section. The resulting service is generated, so
 `generated`. Linger must be enabled for `makecode` so the user manager and
 container start during host boot.
 
-Confirm that the response includes `Permissions-Policy: usb=(self)` and the
+Confirm that the response includes `Permissions-Policy: usb=(self), hid=(self)` and the
 alpha `X-Robots-Tag`, then publish and reopen a disposable project through the
 browser gate. Apache should proxy only to `127.0.0.1:3232`; the container
 itself publishes no non-loopback port.

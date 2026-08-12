@@ -161,7 +161,7 @@ func newApp(siteDir, dataDir string, maxStoreSize int64) (*app, error) {
 }
 
 func (a *app) ServeHTTP(response http.ResponseWriter, request *http.Request) {
-	response.Header().Set("Permissions-Policy", "usb=(self)")
+	response.Header().Set("Permissions-Policy", "usb=(self), hid=(self)")
 	response.Header().Set("X-Robots-Tag", "noindex, nofollow")
 	response.Header().Set("X-Content-Type-Options", "nosniff")
 	response.Header().Set("Referrer-Policy", "same-origin")
