@@ -41,7 +41,7 @@ the same origin and must not depend on Microsoft services.
 | Repository | Role | Pinned commit |
 | --- | --- | --- |
 | `pxt/` | PXT framework fork | `f196b2348a27` |
-| `pxt-circuit-playground/` | target/editor/simulator | `718f1b240307` |
+| `pxt-circuit-playground/` | target/editor/simulator | `b525e96f9846` |
 | `codal-circuit-playground-bluefruit/` | CPB native runtime | `30d62c331ea2` |
 | `Adafruit_nRF52_Bootloader/` | CPB HF2 bootloader | `e7b48c5467de` |
 
@@ -54,7 +54,7 @@ secret scan.
 ## Current production
 
 `makecode.jim.sh` currently serves release
-`v0.15.77-alpha.fcc3b5d9a8b6`. It provides:
+`v0.15.77-alpha.a725d7933181`. It provides:
 
 - the unified CPX/CPB editor and polished dark Standard theme;
 - exactly two validated built-in firmware caches;
@@ -66,6 +66,8 @@ secret scan.
   UF2 fallback only after an explicit manual-download choice;
 - guided `Connect Device` / `Send to Board` actions, explicit alternatives,
   board-specific manual-copy instructions, and failure-only Linux help;
+- a same-origin, checksummed CPB HF2 bootloader updater with version checks,
+  warnings, installation verification, and recovery documentation;
 - automatic repair of stale board dependencies and invalid native caches,
   verified against the affected Firefox profile on `basis`;
 - a rootless container on `psychosis`, bound to `127.0.0.1:3232`, with Apache
@@ -77,10 +79,10 @@ The site remains an alpha with `X-Robots-Tag: noindex, nofollow`.
 
 ### 1. CPB hardware/runtime acceptance
 
-- A same-board UF2 updater now builds reproducibly from the pinned HF2
-  bootloader source and is validated for family, board ID, address bounds,
-  vectors, UICR, completeness, and negative mutations. Package it with the
-  site and document the one-time update before installing it on hardware.
+- The same-board HF2 updater now builds reproducibly, is validated for family,
+  board ID, address bounds, vectors, UICR, completeness, and negative
+  mutations, and is packaged on the production site. Hardware installation and
+  recovery testing remain outstanding.
 - Install and test the unofficial HF2-capable CPB bootloader; retain UF2, USB
   DFU, and recovery paths.
 - Validate application-to-bootloader handoff, WebUSB reconnect, bounded flash
