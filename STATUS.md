@@ -41,7 +41,7 @@ depend on Microsoft services.
 | Repository | Role | Pinned commit |
 | --- | --- | --- |
 | `pxt/` | PXT framework fork | `b6fd06e058f0` |
-| `pxt-circuit-playground/` | target/editor/simulator | `ce1191601fc0` |
+| `pxt-circuit-playground/` | target/editor/simulator | `4cfd2ec3acb8` |
 | `codal-circuit-playground-bluefruit/` | CPB native runtime | `30d62c331ea2` |
 | `Adafruit_nRF52_Bootloader/` | CPB HF2 bootloader | `7836c7cc3d81` |
 
@@ -86,6 +86,8 @@ The site remains an alpha with `X-Robots-Tag: noindex, nofollow`.
 
 ### 2. Cross-browser and physical-device acceptance
 
+- Deploy the validated CPX application-to-bootloader reset repair, bootstrap
+  the attached CPX once, and confirm 25 WebUSB uploads without UF2 fallback.
 - Run 25 WebUSB upload/run cycles per board in Linux Chrome/Chromium and
   Chromebook Chrome; verify UF2 fallback and reconnect behavior.
 - Manually confirm Firefox persistence, simulator, export/import, and UF2.
