@@ -1212,13 +1212,24 @@ async function main() {
             assert(primaryText === "Connect Device",
                 `unpaired Chromium primary action is not Connect Device: ${JSON.stringify(primaryState)}`);
             await clickVisible(page, ".download-button");
-            await page.waitForFunction(() => {
-                const text = document.querySelector("[role=dialog]")?.innerText || "";
-                return text.includes("Connect your Circuit Playground") &&
-                    text.includes("Connect Circuit Playground to your computer with a USB cable") &&
-                    text.includes("Press Connect Device below") &&
-                    text.includes("select the device with \"Circuit Playground\" in its name");
-            }, { timeout: 30000 });
+            try {
+                await page.waitForFunction(() => {
+                    const text = document.querySelector("[role=dialog]")?.innerText || "";
+                    return text.includes("Connect your Circuit Playground Bluefruit") &&
+                        text.includes("Connect Circuit Playground Bluefruit to your computer with a USB cable") &&
+                        text.includes("Press Connect Device below") &&
+                        text.includes("select the device with \"Circuit Playground\" in its name");
+                }, { timeout: 30000 });
+            } catch (error) {
+                const state = await page.evaluate(() => ({
+                    dialogs: [...document.querySelectorAll("[role=dialog]")].map(element => element.innerText),
+                    downloadText: document.querySelector(".download-button")?.innerText.trim(),
+                    connected: pxt.packetio.isConnected(),
+                    connecting: pxt.packetio.isConnecting(),
+                    notifications: [...document.querySelectorAll(".ui.message")].map(element => element.innerText),
+                }));
+                throw new Error(`guided connect dialog did not appear: ${JSON.stringify(state)}; ${error}`);
+            }
             await clickVisible(page, '[role=dialog] [title="Close"]');
             await page.waitForSelector("[role=dialog]", { hidden: true, timeout: 30000 });
 
