@@ -55,7 +55,7 @@ secret scan.
 ## Current production
 
 `makecode.jim.sh` currently serves release
-`v0.15.77-alpha.8a424ac10b3f`. It provides:
+`v0.15.77-alpha.a629e34d3707`. It provides:
 
 - the unified CPX/CPB editor and polished dark Standard theme;
 - exactly two validated built-in firmware caches;
@@ -64,6 +64,8 @@ secret scan.
 - a curated, offline-opening extension gallery with pinned recommendations,
   consistent fallback artwork, installed-package visibility, and removal;
 - WebUSB-based direct transfer with no WebHID pairing dependency;
+- one modern connection-dialog flow shared by CPX and CPB; board selection
+  supplies the hardware-specific name, firmware help, simulator, and UF2;
 - a deliberate `...` menu ordered as `Choose Hardware`, `Download as File`,
   and `Connect Device` / `Connect New Device`;
 - guided `Connect Device` / `Send to Board` actions, retry/manual-download/
