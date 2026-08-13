@@ -785,6 +785,31 @@ async function checkHomeVisuals(page) {
         };
         const menu = document.querySelector("#mainmenu");
         const settings = document.querySelector("#settings-menuitem");
+        const hero = document.querySelector(".getting-started-segment.hero");
+        const heroStyle = hero && getComputedStyle(hero);
+        const heroUrl = heroStyle?.backgroundImage.match(/^url\(["']?(.*?)["']?\)$/)?.[1];
+        let heroImage;
+        if (heroUrl) {
+            const response = await fetch(heroUrl, { cache: "reload" });
+            const blob = await response.blob();
+            const decoded = await new Promise(resolve => {
+                const element = new Image();
+                element.onload = () => resolve({
+                    width: element.naturalWidth,
+                    height: element.naturalHeight
+                });
+                element.onerror = () => resolve({ width: 0, height: 0 });
+                element.src = URL.createObjectURL(blob);
+            });
+            heroImage = {
+                url: new URL(heroUrl).pathname,
+                status: response.status,
+                contentType: response.headers.get("content-type"),
+                position: heroStyle.backgroundPosition,
+                renderedHeight: hero.getBoundingClientRect().height,
+                ...decoded
+            };
+        }
         const logo = [...document.querySelectorAll("#mainmenu .left.menu .logo")]
             .find(element => {
                 const bounds = element.getBoundingClientRect();
@@ -809,7 +834,7 @@ async function checkHomeVisuals(page) {
                     const bounds = element.getBoundingClientRect();
                     return bounds.width > 0 && bounds.height > 0;
                 }).length,
-            hasHero: !!document.querySelector(".getting-started-segment.hero"),
+            heroImage,
             homeBackground: getComputedStyle(document.querySelector(".ui.home.projectsdialog"))
                 .backgroundImage
         };
@@ -827,9 +852,18 @@ async function checkHomeVisuals(page) {
         ["Circuit Playground MakeCode", "Circuit Playground"].includes(visuals.logoText[0]) &&
         visuals.visibleLogos === 1,
         `home header branding is missing or duplicated: ${JSON.stringify(visuals)}`);
-    assert(!visuals.hasHero, "home screen still contains the unrelated breadboard hero image");
+    assert(visuals.heroImage &&
+        ["/docs/static/home-banner-mist.png", "/docs/static/home-banner-ocean.png"]
+            .includes(visuals.heroImage.url) &&
+        visuals.heroImage.status === 200 &&
+        visuals.heroImage.contentType === "image/png" &&
+        visuals.heroImage.width === 1875 && visuals.heroImage.height === 675 &&
+        visuals.heroImage.position === "50% 50%" &&
+        visuals.heroImage.renderedHeight > 0,
+    `home banner is missing, malformed, or positioned incorrectly: ${JSON.stringify(visuals.heroImage)}`);
     assert(visuals.homeBackground && visuals.homeBackground !== "none",
         "home screen has no visual background treatment");
+    return visuals.heroImage.url;
 }
 
 async function checkColorPicker(page, width, height, label) {
@@ -1136,7 +1170,12 @@ async function main() {
         }
 
         await checkHomeLayout(page, 1366, 768, "desktop");
-        await checkHomeVisuals(page);
+        const firstHomeBanner = await checkHomeVisuals(page);
+        await page.reload({ waitUntil: "networkidle2", timeout: 60000 });
+        await page.waitForSelector(".newprojectcard", { timeout: 30000 });
+        const secondHomeBanner = await checkHomeVisuals(page);
+        assert(firstHomeBanner !== secondHomeBanner,
+            `home banner did not alternate across page loads: ${firstHomeBanner}`);
         await checkHomeLayout(page, 1024, 600, "Chromebook");
         // 1024x600 at 125% browser zoom has an approximately 819x480 CSS viewport.
         await checkHomeLayout(page, 819, 480, "Chromebook 125% zoom equivalent");
