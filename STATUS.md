@@ -55,9 +55,10 @@ secret scan.
 ## Current production
 
 `makecode.jim.sh` currently serves release
-`v0.15.77-alpha.a629e34d3707`. It provides:
+`v0.15.77-alpha.17512a896b8e`. It provides:
 
 - the unified CPX/CPB editor and polished dark Standard theme;
+- two locally hosted, hand-drawn home banners that alternate on full page loads;
 - exactly two validated built-in firmware caches;
 - same-origin project publishing and clean share links;
 - release-aware service workers and no implicit external requests;
