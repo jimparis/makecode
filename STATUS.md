@@ -113,6 +113,12 @@ The site remains an alpha with `X-Robots-Tag: noindex, nofollow`.
 - Confirm 25 CPX direct upload/run cycles with no unexpected UF2 fallback.
 - Run 25 direct upload/run cycles per board in Linux Chrome/Chromium and
   Chromebook Chrome; verify retry, explicit UF2 fallback, and reconnect behavior.
+- Chromebook CPX testing found unnecessary pairing/success clicks, a cramped
+  troubleshooting control, and a successful-flash/failed-reconnect race. The
+  local next release opens the browser chooser from the first click, sends the
+  pending program immediately after authorization, removes the redundant
+  reconnect and assembly button, and uses the bootloader's real USB product
+  name. Chromebook retesting is pending.
 - Manually confirm Firefox persistence, simulator, export/import, and UF2.
 - Review theme hover/focus/disabled states and color-picker placement on the
   actual Chromebook and Linux desktop.
