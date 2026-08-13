@@ -41,7 +41,7 @@ the same origin and must not depend on Microsoft services.
 | Repository | Role | Pinned commit |
 | --- | --- | --- |
 | `pxt/` | PXT framework fork | `0401803bed9f` |
-| `pxt-circuit-playground/` | target/editor/simulator | `4f3971f8cd17` |
+| `pxt-circuit-playground/` | target/editor/simulator | `4a46712eefe4` |
 | `codal-circuit-playground-bluefruit/` | CPB native runtime | `30d62c331ea2` |
 | `Adafruit_nRF52_Bootloader/` | CPB HF2 bootloader | `e7b48c5467de` |
 | `uf2-samdx1/` | official CPX UF2/HF2 bootloader | `d4dc92889759` |
@@ -107,7 +107,9 @@ The site remains an alpha with `X-Robots-Tag: noindex, nofollow`.
 - The pinned official Adafruit v4.0.0 updater has been installed on the
   attached CPX. HF2 readback verified every updater page before execution; the
   resulting bootloader reports v4.0.0, the CPX board ID and SAMD21 family, a
-  hardware-derived serial, and the HF2 WebUSB interface.
+  hardware-derived serial, and the HF2 WebUSB interface. Public instructions
+  cover the normal UF2 copy plus the checked Linux HID fallback required by the
+  tested legacy v1.22.0 SFHR bootloader.
 - Confirm 25 CPX direct upload/run cycles with no unexpected UF2 fallback.
 - Run 25 direct upload/run cycles per board in Linux Chrome/Chromium and
   Chromebook Chrome; verify retry, explicit UF2 fallback, and reconnect behavior.

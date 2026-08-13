@@ -6,7 +6,7 @@ NODE_IMAGE := docker.io/library/node@sha256:673fce836d5a9185da33352682bfedb17c17
 PXT_CONTAINER := podman run --rm -v $(CURDIR):/workspace:Z -w /workspace/pxt-circuit-playground $(NODE_IMAGE)
 PXT_CORE_CONTAINER := podman run --rm -v $(CURDIR):/workspace:Z -w /workspace/pxt $(NODE_IMAGE)
 
-.PHONY: submodules-init submodules-check status pxt-core-install pxt-core-build pxt-install pxt-check pxt-firmware-bounds pxt-static-check pxt-cpb-build static-build static-browser-check static-firefox-check production-browser-check production-firefox-check pxt-serve codal-check codal-build bootloader-check bootloader-build cpx-bootloader-build udev-check udev-install
+.PHONY: submodules-init submodules-check status pxt-core-install pxt-core-build pxt-install pxt-check pxt-firmware-bounds pxt-static-check pxt-cpb-build static-build static-browser-check static-firefox-check production-browser-check production-firefox-check pxt-serve codal-check codal-build bootloader-check bootloader-build cpx-bootloader-build cpx-bootloader-install udev-check udev-install
 
 submodules-init:
 	git submodule update --init -- $(SUBMODULES)
@@ -119,6 +119,9 @@ bootloader-build: bootloader-check
 
 cpx-bootloader-build: submodules-check
 	node scripts/build-cpx-bootloader.js
+
+cpx-bootloader-install: cpx-bootloader-build pxt-core-build
+	node scripts/install-cpx-bootloader.js
 
 pxt-serve: submodules-check
 	podman run --rm -it \
