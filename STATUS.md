@@ -1,6 +1,6 @@
 # Circuit Playground MakeCode status
 
-Last updated: 2026-08-12
+Last updated: 2026-08-13
 
 This is the operational handoff for the project. Git history contains completed
 work; this file tracks the current state, constraints, blockers, and remaining
@@ -55,7 +55,7 @@ secret scan.
 ## Current production
 
 `makecode.jim.sh` currently serves release
-`v0.15.77-alpha.9c2852b5fa67`. It provides:
+`v0.15.77-alpha.62d2d2997f1a`. It provides:
 
 - the unified CPX/CPB editor and polished dark Standard theme;
 - two locally hosted, hand-drawn home banners that alternate on full page loads;
@@ -72,6 +72,9 @@ secret scan.
 - guided `Connect Device` / `Send to Board` actions, retry/manual-download/
   cancel failure choices, board-specific manual-copy instructions, and
   expandable Linux troubleshooting inside the connection dialogs;
+- one-click browser pairing that immediately sends the pending program, uses
+  the bootloader's actual USB chooser name, and tolerates slow post-flash USB
+  re-enumeration without reporting a successful transfer as failed;
 - a same-origin, checksummed official Adafruit CPX v4 bootloader updater that
   adds HF2 WebUSB and a hardware-derived persistent USB serial;
 - a same-origin, checksummed CPB HF2 bootloader updater with version checks,
@@ -115,10 +118,8 @@ The site remains an alpha with `X-Robots-Tag: noindex, nofollow`.
   Chromebook Chrome; verify retry, explicit UF2 fallback, and reconnect behavior.
 - Chromebook CPX testing found unnecessary pairing/success clicks, a cramped
   troubleshooting control, and a successful-flash/failed-reconnect race. The
-  local next release opens the browser chooser from the first click, sends the
-  pending program immediately after authorization, removes the redundant
-  reconnect and assembly button, and uses the bootloader's real USB product
-  name. Chromebook retesting is pending.
+  deployed release addresses all four; physical Chromebook retesting is
+  pending.
 - Manually confirm Firefox persistence, simulator, export/import, and UF2.
 - Review theme hover/focus/disabled states and color-picker placement on the
   actual Chromebook and Linux desktop.
