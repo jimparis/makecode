@@ -30,5 +30,9 @@ Production serves a versioned static-package container and must not bind-mount
 a source checkout over the application directory.
 
 Keep CPX and CPB built-in firmware reproducible and usable without the cloud.
-Cloud services are optional for sharing and external packages. Do not publish
-or push changes unless the user asks for it.
+Cloud services are optional for sharing and external packages. After an
+implemented change passes its relevant checks, commit and push each affected
+child repository, commit and push the updated parent gitlinks, then deploy the
+versioned static-package release to production unless the user explicitly asks
+to keep the work local or to skip deployment. Never deploy a failed or
+partially validated build.
