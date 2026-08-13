@@ -869,15 +869,46 @@ async function checkHomeVisuals(page) {
 async function checkColorPicker(page, width, height, label) {
     await page.setViewport({ width, height, deviceScaleFactor: 1 });
     await delay(300);
-    const picker = await page.evaluate(() => {
-        const field = [...document.querySelectorAll("g.blocklyDraggable")]
-            .find(element => element.getBoundingClientRect().width > 0 && /ff0000/i.test(element.outerHTML));
-        if (!field) throw new Error("converted workspace has no red color shadow block");
-        const target = field.querySelector(".blocklyEditableField") || field;
-        const targetBounds = target.getBoundingClientRect();
-        target.dispatchEvent(new MouseEvent("mousedown", { bubbles: true, cancelable: true, view: window }));
-        target.dispatchEvent(new MouseEvent("mouseup", { bubbles: true, cancelable: true, view: window }));
-        const element = document.querySelector(".blocklyDropDownDiv");
+    const targetBounds = await page.evaluate(() => {
+        const target = [...document.querySelectorAll("g.blocklyDraggable")]
+            .filter(element => element.getBoundingClientRect().width > 0)
+            .filter(element => {
+                const path = element.querySelector(":scope > .blocklyPath");
+                return path && getComputedStyle(path).fill === "rgb(255, 0, 0)";
+            })
+            .sort((left, right) => {
+                const l = left.getBoundingClientRect();
+                const r = right.getBoundingClientRect();
+                return l.width * l.height - r.width * r.height;
+            })[0];
+        if (!target) throw new Error("converted workspace has no red color block");
+        target.setAttribute("data-browser-color-field", "true");
+        const bounds = target.getBoundingClientRect();
+        return {
+            left: bounds.left, top: bounds.top,
+            right: bounds.right, bottom: bounds.bottom
+        };
+    });
+    await page.click('[data-browser-color-field="true"]');
+    try {
+        await page.waitForFunction(() => [...document.querySelectorAll(".blocklyDropDownDiv")]
+            .some(candidate => candidate.querySelector(".blocklyFieldGridItem")), { timeout: 5000 });
+    } catch (error) {
+        const state = await page.evaluate(() => ({
+            target: document.querySelector('[data-browser-color-field="true"]')?.outerHTML,
+            dropdowns: [...document.querySelectorAll(".blocklyDropDownDiv")].map(element => ({
+                html: element.outerHTML.slice(0, 2000),
+                bounds: element.getBoundingClientRect().toJSON(),
+                display: getComputedStyle(element).display,
+                visibility: getComputedStyle(element).visibility
+            }))
+        }));
+        fail(`${label}: Blockly color picker did not open: ${JSON.stringify(state)}`);
+    }
+    const picker = await page.evaluate(targetBounds => {
+        const element = [...document.querySelectorAll(".blocklyDropDownDiv")]
+            .find(candidate => candidate.querySelector(".blocklyFieldGridItem"));
+        if (!element) throw new Error("Blockly color picker dropdown is missing");
         const bounds = element.getBoundingClientRect();
         return {
             visible: getComputedStyle(element).display !== "none" && bounds.width > 0 && bounds.height > 0,
@@ -895,7 +926,7 @@ async function checkColorPicker(page, width, height, label) {
             viewportWidth: innerWidth,
             viewportHeight: innerHeight
         };
-    });
+    }, targetBounds);
     assert(picker.visible, `${label}: Blockly color picker did not open`);
     assert(picker.left >= -1 && picker.top >= -1 &&
         picker.right <= picker.viewportWidth + 1 && picker.bottom <= picker.viewportHeight + 1,
