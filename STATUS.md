@@ -104,12 +104,10 @@ The site remains an alpha with `X-Robots-Tag: noindex, nofollow`.
 
 ### 2. Cross-browser and physical-device acceptance
 
-- With explicit approval, install the updater on the attached CPX. It erases
-  the current application, writes the 8 KiB bootloader, restores BOOTPROT, and
-  should provide a hardware-derived serial plus HF2 WebUSB. The deployed
-  updater is reproducibly built from pinned official Adafruit v4.0.0 source;
-  its validators cover vectors, bounds, descriptors, block completeness,
-  source contract, checksums, and negative mutations.
+- The pinned official Adafruit v4.0.0 updater has been installed on the
+  attached CPX. HF2 readback verified every updater page before execution; the
+  resulting bootloader reports v4.0.0, the CPX board ID and SAMD21 family, a
+  hardware-derived serial, and the HF2 WebUSB interface.
 - Confirm 25 CPX direct upload/run cycles with no unexpected UF2 fallback.
 - Run 25 direct upload/run cycles per board in Linux Chrome/Chromium and
   Chromebook Chrome; verify retry, explicit UF2 fallback, and reconnect behavior.
@@ -149,9 +147,8 @@ The site remains an alpha with `X-Robots-Tag: noindex, nofollow`.
 - Current npm audit reports inherited vulnerabilities; controlled dependency
   upgrades are future work.
 - The product-specific udev rule is installed on `psychosis`; the attached CPX
-  is currently in an older bootloader at `239a:0018`, accessible as
-  `root:plugdev` mode `0660`. That bootloader has CDC/MSC/HID but no WebUSB or
-  USB serial, so Chromium cannot persist its HID grant across reconnects.
+  now runs the verified Adafruit v4.0.0 bootloader at `239a:0018`, with a
+  persistent hardware serial and HF2 WebUSB interface.
 - Apache passes through the application-owned `Permissions-Policy` and
   `X-Robots-Tag` headers without adding duplicates.
 - The headless Firefox gate currently reaches and passes the extension checks,
@@ -189,6 +186,5 @@ make status
 git status --short
 ```
 
-Request explicit confirmation before installing the CPX updater on the
-attached board. Never install firmware without a board present and explicit
-confirmation of the intended device/recovery path.
+Never install firmware without a board present and explicit confirmation of
+the intended device/recovery path.
