@@ -40,8 +40,8 @@ the same origin and must not depend on Microsoft services.
 
 | Repository | Role | Pinned commit |
 | --- | --- | --- |
-| `pxt/` | PXT framework fork | `7c7756fe9811` |
-| `pxt-circuit-playground/` | target/editor/simulator | `d4225a992c8b` |
+| `pxt/` | PXT framework fork | `86271a5e235d` |
+| `pxt-circuit-playground/` | target/editor/simulator | `5ece2e6f3cb7` |
 | `codal-circuit-playground-bluefruit/` | CPB native runtime | `30d62c331ea2` |
 | `Adafruit_nRF52_Bootloader/` | CPB HF2 bootloader | `e7b48c5467de` |
 | `uf2-samdx1/` | official CPX UF2/HF2 bootloader | `d4dc92889759` |
@@ -55,7 +55,7 @@ secret scan.
 ## Current production
 
 `makecode.jim.sh` currently serves release
-`v0.15.77-alpha.62d2d2997f1a`. It provides:
+`v0.15.77-alpha.29dbc369dac7`. It provides:
 
 - the unified CPX/CPB editor and polished dark Standard theme;
 - two locally hosted, hand-drawn home banners that alternate on full page loads;
@@ -81,6 +81,11 @@ secret scan.
   warnings, installation verification, and recovery documentation;
 - automatic repair of stale board dependencies and invalid native caches,
   verified against the affected Firefox profile on `basis`;
+- color pickers anchored to the selected field and kept within the viewport;
+- example projects that retain their blocks and source through first-time board
+  selection;
+- the wider, layered NeoPixel glow used by Adafruit's editor so simulated
+  brightness is visibly distinct;
 - a rootless container on `psychosis`, bound to `127.0.0.1:3232`, with Apache
   terminating TLS and a persistent share-data mount.
 
@@ -121,8 +126,8 @@ The site remains an alpha with `X-Robots-Tag: noindex, nofollow`.
   deployed release addresses all four; physical Chromebook retesting is
   pending.
 - Manually confirm Firefox persistence, simulator, export/import, and UF2.
-- Review theme hover/focus/disabled states and color-picker placement on the
-  actual Chromebook and Linux desktop.
+- Review theme hover/focus/disabled states on the actual Chromebook and Linux
+  desktop.
 - Verify CPX hardware, including infrared, after the unified-site changes.
 
 ### 3. Product and operations cleanup
