@@ -874,6 +874,7 @@ async function checkColorPicker(page, width, height, label) {
             .find(element => element.getBoundingClientRect().width > 0 && /ff0000/i.test(element.outerHTML));
         if (!field) throw new Error("converted workspace has no red color shadow block");
         const target = field.querySelector(".blocklyEditableField") || field;
+        const targetBounds = target.getBoundingClientRect();
         target.dispatchEvent(new MouseEvent("mousedown", { bubbles: true, cancelable: true, view: window }));
         target.dispatchEvent(new MouseEvent("mouseup", { bubbles: true, cancelable: true, view: window }));
         const element = document.querySelector(".blocklyDropDownDiv");
@@ -886,6 +887,11 @@ async function checkColorPicker(page, width, height, label) {
             bottom: bounds.bottom,
             width: bounds.width,
             height: bounds.height,
+            targetLeft: targetBounds.left,
+            targetTop: targetBounds.top,
+            targetRight: targetBounds.right,
+            targetBottom: targetBounds.bottom,
+            swatches: element.querySelectorAll(".blocklyFieldGridItem").length,
             viewportWidth: innerWidth,
             viewportHeight: innerHeight
         };
@@ -894,6 +900,14 @@ async function checkColorPicker(page, width, height, label) {
     assert(picker.left >= -1 && picker.top >= -1 &&
         picker.right <= picker.viewportWidth + 1 && picker.bottom <= picker.viewportHeight + 1,
     `${label}: Blockly color picker is outside the viewport: ${JSON.stringify(picker)}`);
+    const horizontalGap = Math.max(0,
+        picker.left - picker.targetRight, picker.targetLeft - picker.right);
+    const verticalGap = Math.max(0,
+        picker.top - picker.targetBottom, picker.targetTop - picker.bottom);
+    assert(horizontalGap <= 20 && verticalGap <= 20,
+        `${label}: Blockly color picker is detached from its field: ${JSON.stringify(picker)}`);
+    assert(picker.swatches === 16,
+        `${label}: Blockly color picker has ${picker.swatches} colors instead of 16`);
     await page.keyboard.press("Escape");
 }
 
@@ -1180,6 +1194,28 @@ async function main() {
         // 1024x600 at 125% browser zoom has an approximately 819x480 CSS viewport.
         await checkHomeLayout(page, 819, 480, "Chromebook 125% zoom equivalent");
         await page.setViewport({ width: 1024, height: 600, deviceScaleFactor: 1 });
+
+        // Examples are decompiled before the mandatory board chooser opens. The
+        // chooser reloads the project, so verify that generated source survives it.
+        await page.goto(`${origin}/#example:/projects/light/rainbow`, {
+            waitUntil: "networkidle2", timeout: 60000
+        });
+        await page.waitForSelector(
+            '[role=dialog] [aria-label="Bluefruit"]', { timeout: 30000 }
+        );
+        assert(/show\s+animation/.test(await page.evaluate(() => document.body.innerText)),
+            "example blocks were not visible before board selection");
+        await page.click('[role=dialog] [aria-label="Bluefruit"]');
+        await page.waitForFunction(() => window.pxt && pxt.appTargetVariant === "nrf52840" &&
+            !document.body.classList.contains("ReactModal__Body--open") &&
+            /show\s+animation/.test(document.body.innerText), { timeout: 30000 });
+        await clickVisible(page, ".javascript-menuitem");
+        await page.waitForFunction(() => window.monaco && monaco.editor.getModels().some(model =>
+            /main\.ts$/.test(model.uri.path) &&
+            model.getValue().includes("light.showAnimation") &&
+            model.getValue().includes("light.setLength(30)")), { timeout: 30000 });
+        await clickVisible(page, '[title="Home"]');
+        await page.waitForSelector(".newprojectcard", { visible: true, timeout: 30000 });
 
         await page.click(".newprojectcard");
         await page.waitForSelector("#projectNameInput");
@@ -1656,6 +1692,20 @@ async function main() {
         simulatorFrame = await waitForSimulatorFrame(page);
         await simulatorFrame.waitForFunction(() => window.pxsim && pxsim.runtime &&
             pxsim.runtime.board && pxsim.AudioContextManager, { timeout: 30000 });
+        const neopixelGlow = await simulatorFrame.evaluate(() => {
+            const filter = document.querySelector("#neopixelglow");
+            return filter && {
+                x: filter.getAttribute("x"),
+                y: filter.getAttribute("y"),
+                width: filter.getAttribute("width"),
+                height: filter.getAttribute("height"),
+                blurredLayers: filter.querySelectorAll('feMergeNode[in="coloredBlur"]').length
+            };
+        });
+        assert(neopixelGlow && neopixelGlow.x === "-300%" && neopixelGlow.y === "-300%" &&
+            neopixelGlow.width === "600%" && neopixelGlow.height === "600%" &&
+            neopixelGlow.blurredLayers === 2,
+        `simulator NeoPixel glow does not match the polished CPX effect: ${JSON.stringify(neopixelGlow)}`);
         const audioState = await simulatorFrame.evaluate(async () => {
             for (let index = 0; index < 50; index++) {
                 pxsim.AudioContextManager.tone(220 + (index % 20) * 20, 0.2);
