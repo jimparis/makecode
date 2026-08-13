@@ -1260,11 +1260,13 @@ async function main() {
                     const text = dialog?.innerText || "";
                     return text.includes("Connect your Circuit Playground Bluefruit") &&
                         text.includes("Connect Circuit Playground Bluefruit to your computer with a USB cable") &&
-                        text.includes("Press Connect Device below") &&
-                        text.includes("select the device with \"Circuit Playground\" in its name") &&
+                        text.includes("Select \"Adafruit Circuit Playground nRF52840\" in the browser window that opens") &&
+                        text.includes("Click Connect") &&
                         text.includes("Troubleshooting tips for Linux") &&
                         !!pxt.appTarget.appTheme.downloadDialogTheme &&
                         !!dialog.querySelector(".download-dialog") &&
+                        ![...dialog.querySelectorAll("button")]
+                            .some(button => button.innerText.trim() === "Connect Device") &&
                         !dialog.querySelector(".stackable");
                 }, { timeout: 30000 });
             } catch (error) {
