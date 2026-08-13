@@ -1195,28 +1195,6 @@ async function main() {
         await checkHomeLayout(page, 819, 480, "Chromebook 125% zoom equivalent");
         await page.setViewport({ width: 1024, height: 600, deviceScaleFactor: 1 });
 
-        // Examples are decompiled before the mandatory board chooser opens. The
-        // chooser reloads the project, so verify that generated source survives it.
-        await page.goto(`${origin}/#example:/projects/light/rainbow`, {
-            waitUntil: "networkidle2", timeout: 60000
-        });
-        await page.waitForSelector(
-            '[role=dialog] [aria-label="Bluefruit"]', { timeout: 30000 }
-        );
-        assert(/show\s+animation/.test(await page.evaluate(() => document.body.innerText)),
-            "example blocks were not visible before board selection");
-        await page.click('[role=dialog] [aria-label="Bluefruit"]');
-        await page.waitForFunction(() => window.pxt && pxt.appTargetVariant === "nrf52840" &&
-            !document.body.classList.contains("ReactModal__Body--open") &&
-            /show\s+animation/.test(document.body.innerText), { timeout: 30000 });
-        await clickVisible(page, ".javascript-menuitem");
-        await page.waitForFunction(() => window.monaco && monaco.editor.getModels().some(model =>
-            /main\.ts$/.test(model.uri.path) &&
-            model.getValue().includes("light.showAnimation") &&
-            model.getValue().includes("light.setLength(30)")), { timeout: 30000 });
-        await clickVisible(page, '[title="Home"]');
-        await page.waitForSelector(".newprojectcard", { visible: true, timeout: 30000 });
-
         await page.click(".newprojectcard");
         await page.waitForSelector("#projectNameInput");
         const projectName = process.env.CAPTURE_README_SCREENSHOTS === "1"
@@ -1862,6 +1840,26 @@ async function main() {
             const cpxUf2 = await waitForDownload(downloadDirectory, ".uf2");
             validateUf2(cpxUf2, "CPX", 0x68ed2b88, 0x2000, 0x40000);
         }
+
+        // Examples are decompiled before the mandatory board chooser opens. The
+        // chooser reloads the project, so verify that generated source survives it.
+        await page.goto(`${origin}/#example:/projects/light/rainbow`, {
+            waitUntil: "networkidle2", timeout: 60000
+        });
+        await page.waitForSelector(
+            '[role=dialog] [aria-label="Bluefruit"]', { timeout: 30000 }
+        );
+        assert(/show\s+animation/.test(await page.evaluate(() => document.body.innerText)),
+            "example blocks were not visible before board selection");
+        await page.click('[role=dialog] [aria-label="Bluefruit"]');
+        await page.waitForFunction(() => window.pxt && pxt.appTargetVariant === "nrf52840" &&
+            !document.body.classList.contains("ReactModal__Body--open") &&
+            /show\s+animation/.test(document.body.innerText), { timeout: 30000 });
+        await clickVisible(page, ".javascript-menuitem");
+        await page.waitForFunction(() => window.monaco && monaco.editor.getModels().some(model =>
+            /main\.ts$/.test(model.uri.path) &&
+            model.getValue().includes("light.showAnimation") &&
+            model.getValue().includes("light.setLength(30)")), { timeout: 30000 });
 
         assert(externalRequests.size === 0,
             `release made unexpected external requests:\n  ${[...externalRequests].join("\n  ")}`);
